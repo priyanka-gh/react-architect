@@ -2,7 +2,7 @@
 
 A VS Code extension that scaffolds React + Vite projects and generates components, hooks and features that follow the project's declared conventions.
 
-**Status:** Phase 0 (extension skeleton) done; Phase 1 next.
+**Status:** Phase 2 (generate component, hook and feature in existing projects) done; Phase 3 next.
 
 ## Development
 

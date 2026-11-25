@@ -38,7 +38,8 @@ Version 1 of the schema (the real file is plain JSON, so it has no comments or t
 
 Rules:
 
-- Paths are relative to the manifest's directory, use `/`, and must resolve inside it.
+- Paths are relative to the manifest's directory, use `/`, and must not contain `..`. They must also be valid on Windows: no reserved names such as `con`, no `<>"|?*`, and no trailing dot or space. `./src/components/` is accepted and stored as `src/components`.
+- The JSON Schema checks the common path mistakes: absolute paths, `\`, `:` and `..`. The Windows name rules would make its pattern unreadable, so only the extension checks those.
 - Missing optional fields take their defaults. Unknown fields produce a warning, not an error, for forward compatibility.
 - An unsupported `manifestVersion` is an error that names the version this extension supports.
 - A field is added only when a second option for it is actually implemented. Naming conventions are therefore fixed in v1 (see [ADR 5](0005-conventions-for-generated-code.md)).

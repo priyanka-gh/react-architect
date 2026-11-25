@@ -10,7 +10,8 @@ Vite already maintains a working React + TypeScript base: build config, tsconfig
 
 Run create-vite at an exact pinned version with the `react-ts` template, then apply our overlay.
 
-- **Invocation:** run from the parent directory, with the project name as its own argv element and no shell string. The planned form is `npm exec --yes --package=create-vite@<exact> -- create-vite <name> --template react-ts`, plus the version's non-interactive flag. Third-party sources disagree about what `-i` means, so we use long-form flags only. In Phase 3, confirm the exact argv against `--help` for the pinned version and record it here.
+- **Invocation:** run from the parent directory, with the project name as its own argv element and no shell string. Checked against `--help` for create-vite 9.3.4 (2026-11-26): `npm exec --yes --package=create-vite@9.3.4 -- create-vite <name> --template react-ts --eslint --no-interactive --no-immediate`. Long-form flags only: in this version `-i` means `--immediate` (install dependencies and start the dev server), not interactive.
+- **Linter:** since create-vite 9, React templates use Oxlint unless `--eslint` is passed. We pass `--eslint`, because ESLint is what the generated `eslint.config.js` and most React projects use. Revisit if Oxlint becomes the common choice.
 - **Overlay policy:** files we change are replaced wholesale, never patched with string edits. The one exception is `package.json`, which is parsed as JSON, merged (dependencies, devDependencies, scripts) and written back with 2-space indentation.
 - **Files we keep as generated:** `index.html`, `public/`, `tsconfig*.json`, `.gitignore`.
 - **Files we replace:** `src/**`, `vite.config.ts`, `eslint.config.js`.

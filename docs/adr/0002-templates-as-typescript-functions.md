@@ -16,7 +16,7 @@ The original proposal used Handlebars. Handlebars has several problems for gener
 Built-in templates are functions of the form `(ctx: SomeContext) => string`, kept in `src/core/templates/`. The extension uses no template engine.
 
 - Templates contain only conditionals on their context. File paths and names are decided by the generators.
-- Templates emit code that is already formatted to Prettier's defaults, which is the configuration generated projects use. The end-to-end test runs `prettier --check` on generated code to enforce this.
+- Templates emit code that is already formatted to Prettier's defaults, which is the configuration generated projects use. A unit test runs every generator's output through Prettier for the shortest, a typical and the longest allowed name, and fails if Prettier would change anything. Lines that depend on the name's length (such as a component's signature) switch to Prettier's wrapped form when they would pass 80 characters, and names are capped at 30 characters (ADR 5) so the remaining lines always fit.
 - A small internal `dedent` helper handles indentation inside template literals. It doesn't need a dependency.
 
 ## Consequences

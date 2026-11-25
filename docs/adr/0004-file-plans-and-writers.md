@@ -12,7 +12,8 @@ Generators are pure functions of the form `(input, manifest) => FilePlan`. They 
 
 ```ts
 type FileOperation =
-  | { kind: "create"; path: string; content: string }
+  // `overwrite` is set only after the user agrees to replace an existing file.
+  | { kind: "create"; path: string; content: string; overwrite?: boolean }
   // Append `line` if it isn't already present; create the file if it's missing.
   | { kind: "ensureLine"; path: string; line: string };
 
@@ -22,20 +23,29 @@ interface FilePlan {
 }
 ```
 
-Before anything is written, `core/plan.ts` checks the plan:
+Before anything is written, the plan goes through two checks.
 
-1. Every path is relative and normalised, and resolves inside `root`.
-2. No two operations target paths that differ only by letter case. macOS and Windows filesystems are case-insensitive by default.
-3. Every `create` target that already exists on disk is listed, using a case-insensitive comparison against the parent directory's listing.
+**`checkPlan` (`core/plan.ts`)** needs no disk access. Any problem it finds is a generator bug or bad input, and the plan is not written. It checks that:
 
-Conflicts are resolved once for the whole plan, with one modal: "N files already exist" with the options **Overwrite**, **Skip existing** and **Cancel**. Escape means Cancel. Nothing is written until the conflicts are resolved.
+1. Every path is relative, already normalised, inside `root`, and valid on Windows: no reserved names such as `con` or `aux`, no `<>"|?*`, and no trailing dot or space. The path rules live in `core/paths.ts` and are shared with the manifest.
+2. No file appears twice, unless every operation on it is an `ensureLine`.
+3. No two files or folders differ only by letter case. macOS and Windows filesystems are case-insensitive by default.
+4. No path is used as both a file and a folder.
+
+**`findConflicts` (`core/conflicts.ts`)** compares the plan with the disk. It receives a `readDirectory` function, so tests use an in-memory disk. Each folder is listed once, and names are compared case-insensitively. There are three kinds of conflict:
+
+- **`exists`**: a file the plan would create is already there. The user decides what to do.
+- **`letterCase`**: a file or folder on disk has the same name with different letter case. This blocks the plan.
+- **`fileFolderClash`**: the plan needs a file where a folder is, or the other way round. This blocks the plan.
+
+Blocking conflicts are shown as an error naming the files involved. For `exists` conflicts there is one modal for the whole plan: "N files already exist" with the options **Overwrite**, **Skip existing** and **Cancel**. Escape means Cancel. `applyConflictChoice` turns the answer into a new plan. Nothing is written until every conflict is resolved.
 
 The two writers live in `infra/`:
 
-- **`WorkspaceEditWriter`**, for generating inside an open workspace. It applies the whole plan as a single `WorkspaceEdit`. That makes the write atomic, undoable in one step, aware of unsaved editors, and correct over Remote and WSL. Files changed by `ensureLine` are saved after the edit is applied. In Phase 2, check how `createFile` with contents interacts with undo, and record any adjustment here.
+- **`WorkspaceEditWriter`**, for generating inside an open workspace. It applies the whole plan as a single `WorkspaceEdit`. That makes the write atomic, undoable in one step, aware of unsaved editors, and correct over Remote and WSL. Files changed by `ensureLine` are saved after the edit is applied, unless they already had unsaved changes; the user's own unsaved work is never saved for them. **Undo is not verified automatically:** `undo` sent by the test runner (from the Explorer or from the new file's editor) didn't revert the edit, most likely because automated test windows don't route undo the way a real keypress does. Check it by hand before release.
 - **`FsWriter`**, for a new project outside the workspace. It uses `fs/promises` with the `wx` flag, so a file that appears after the conflict check is never overwritten.
 
-**Preview:** before applying a plan, show its files in a QuickPick, marking each as created or modified and flagging conflicts. Accepting generates; dismissing cancels. A diff view can come later.
+**Preview:** before applying a plan, show a modal listing each file as New, Replace or Update, with a **Generate** button. Dismissing it cancels. A modal fits better than the QuickPick first planned: it's a yes/no decision, and a QuickPick suggests picking one file. A diff view can come later.
 
 ## Consequences
 

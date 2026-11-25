@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "React Architect project settings",
+  "description": "Tells React Architect how this project is organised. Generated code follows these settings.",
+  "type": "object",
+  "required": ["manifestVersion"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "manifestVersion": {
+      "description": "Version of this settings format.",
+      "const": 1
+    },
+    "language": {
+      "description": "Language of generated code.",
+      "enum": ["typescript"],
+      "default": "typescript"
+    },
+    "architecture": {
+      "description": "How the project's folders are organised.",
+      "enum": ["feature-based"],
+      "default": "feature-based"
+    },
+    "styling": {
+      "description": "\"css-modules\" generates a .module.css file with each component. \"none\" generates no stylesheet.",
+      "enum": ["css-modules", "none"],
+      "default": "css-modules"
+    },
+    "paths": {
+      "description": "Where each kind of generated code goes, relative to this file.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "components": {
+          "description": "Folder for shared components.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*[\\\\:])(?!(.*/)?\\.\\.(/|$))",
+          "default": "src/components"
+        },
+        "hooks": {
+          "description": "Folder for shared hooks.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*[\\\\:])(?!(.*/)?\\.\\.(/|$))",
+          "default": "src/hooks"
+        },
+        "features": {
+          "description": "Folder that holds one folder per feature.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*[\\\\:])(?!(.*/)?\\.\\.(/|$))",
+          "default": "src/features"
+        }
+      }
+    },
+    "testing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "framework": {
+          "description": "Test framework for generated tests. \"none\" turns test generation off.",
+          "enum": ["vitest", "none"],
+          "default": "vitest"
+        },
+        "generateTests": {
+          "description": "Default answer when asked whether to include a test.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

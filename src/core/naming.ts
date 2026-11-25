@@ -19,11 +19,24 @@ export type ParseNameResult =
 
 const ALLOWED_CHARACTERS = /^[A-Za-z0-9 _-]+$/;
 
+/**
+ * Longer names make generated lines that Prettier would wrap, so templates
+ * could no longer promise already-formatted output (ADR 2). They also push
+ * paths towards Windows' length limit.
+ */
+export const MAX_NAME_LENGTH = 30;
+
 export function parseName(input: string): ParseNameResult {
   const trimmed = input.trim();
 
   if (trimmed === "") {
     return { ok: false, error: "Enter a name." };
+  }
+  if (trimmed.length > MAX_NAME_LENGTH) {
+    return {
+      ok: false,
+      error: `Use a shorter name (${MAX_NAME_LENGTH} characters at most).`,
+    };
   }
   if (!/^[A-Za-z]/.test(trimmed)) {
     return { ok: false, error: "A name must start with a letter." };

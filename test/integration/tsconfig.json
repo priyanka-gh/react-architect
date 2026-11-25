@@ -3,8 +3,9 @@
   "compilerOptions": {
     "types": ["node", "mocha"],
     "noEmit": false,
-    "rootDir": ".",
-    "outDir": "../../out/integration",
+    // The tests import src/ directly, so compile from the repo root.
+    "rootDir": "../..",
+    "outDir": "../../out",
     "sourceMap": true
   },
   "include": ["./**/*.ts"]

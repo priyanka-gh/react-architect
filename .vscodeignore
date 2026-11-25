@@ -1,6 +1,7 @@
 **
 !dist/extension.js
 !package.json
+!schemas/**
 !README.md
 !CHANGELOG.md
 !LICENSE

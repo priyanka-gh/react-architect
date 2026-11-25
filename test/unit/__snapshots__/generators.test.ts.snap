@@ -1,0 +1,192 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`component generator > creates a component folder with styles and a test 1`] = `
+[
+  {
+    "content": "import styles from "./UserCard.module.css";
+
+export interface UserCardProps {
+  className?: string;
+}
+
+export function UserCard({ className }: UserCardProps) {
+  const classes = [styles.root, className].filter(Boolean).join(" ");
+  return <div className={classes}>UserCard</div>;
+}
+",
+    "kind": "create",
+    "path": "src/components/UserCard/UserCard.tsx",
+  },
+  {
+    "content": ".root {
+  display: block;
+}
+",
+    "kind": "create",
+    "path": "src/components/UserCard/UserCard.module.css",
+  },
+  {
+    "content": "import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { UserCard } from "./UserCard";
+
+describe("UserCard", () => {
+  it("renders", () => {
+    render(<UserCard />);
+    expect(screen.getByText("UserCard")).toBeTruthy();
+  });
+});
+",
+    "kind": "create",
+    "path": "src/components/UserCard/UserCard.test.tsx",
+  },
+]
+`;
+
+exports[`component generator > skips the stylesheet when styling is none 1`] = `
+{
+  "content": "export interface UserCardProps {
+  className?: string;
+}
+
+export function UserCard({ className }: UserCardProps) {
+  return <div className={className}>UserCard</div>;
+}
+",
+  "kind": "create",
+  "path": "src/components/UserCard/UserCard.tsx",
+}
+`;
+
+exports[`feature generator > creates the full feature folder 1`] = `
+[
+  {
+    "content": "import styles from "./UserProfile.module.css";
+
+export interface UserProfileProps {
+  className?: string;
+}
+
+export function UserProfile({ className }: UserProfileProps) {
+  const classes = [styles.root, className].filter(Boolean).join(" ");
+  return <div className={classes}>UserProfile</div>;
+}
+",
+    "kind": "create",
+    "path": "src/features/user-profile/components/UserProfile/UserProfile.tsx",
+  },
+  {
+    "content": ".root {
+  display: block;
+}
+",
+    "kind": "create",
+    "path": "src/features/user-profile/components/UserProfile/UserProfile.module.css",
+  },
+  {
+    "content": "import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { UserProfile } from "./UserProfile";
+
+describe("UserProfile", () => {
+  it("renders", () => {
+    render(<UserProfile />);
+    expect(screen.getByText("UserProfile")).toBeTruthy();
+  });
+});
+",
+    "kind": "create",
+    "path": "src/features/user-profile/components/UserProfile/UserProfile.test.tsx",
+  },
+  {
+    "content": "import { useState } from "react";
+
+export function useUserProfile() {
+  const [value, setValue] = useState("");
+  return { value, setValue };
+}
+",
+    "kind": "create",
+    "path": "src/features/user-profile/hooks/useUserProfile.ts",
+  },
+  {
+    "content": "import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { useUserProfile } from "./useUserProfile";
+
+describe("useUserProfile", () => {
+  it("updates the value", () => {
+    const { result } = renderHook(useUserProfile);
+    act(() => result.current.setValue("next"));
+    expect(result.current.value).toBe("next");
+  });
+});
+",
+    "kind": "create",
+    "path": "src/features/user-profile/hooks/useUserProfile.test.ts",
+  },
+  {
+    "content": "import type { UserProfileData } from "../types";
+
+export async function fetchUserProfile() {
+  const response = await fetch("/api/user-profile");
+  if (!response.ok) {
+    throw new Error(\`Request failed with status \${response.status}\`);
+  }
+  return (await response.json()) as UserProfileData;
+}
+",
+    "kind": "create",
+    "path": "src/features/user-profile/services/userProfileApi.ts",
+  },
+  {
+    "content": "export interface UserProfileData {
+  id: string;
+}
+",
+    "kind": "create",
+    "path": "src/features/user-profile/types.ts",
+  },
+  {
+    "content": "export { UserProfile } from "./components/UserProfile/UserProfile";
+export { useUserProfile } from "./hooks/useUserProfile";
+export { fetchUserProfile } from "./services/userProfileApi";
+export type { UserProfileData } from "./types";
+",
+    "kind": "create",
+    "path": "src/features/user-profile/index.ts",
+  },
+]
+`;
+
+exports[`hook generator > creates the hook and its test side by side 1`] = `
+[
+  {
+    "content": "import { useState } from "react";
+
+export function useCart() {
+  const [value, setValue] = useState("");
+  return { value, setValue };
+}
+",
+    "kind": "create",
+    "path": "src/hooks/useCart.ts",
+  },
+  {
+    "content": "import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { useCart } from "./useCart";
+
+describe("useCart", () => {
+  it("updates the value", () => {
+    const { result } = renderHook(useCart);
+    act(() => result.current.setValue("next"));
+    expect(result.current.value).toBe("next");
+  });
+});
+",
+    "kind": "create",
+    "path": "src/hooks/useCart.test.ts",
+  },
+]
+`;

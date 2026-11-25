@@ -62,3 +62,13 @@ describe("hookName", () => {
     expect(hookName(parsed(input))).toBe(expected);
   });
 });
+
+describe("name length", () => {
+  it("accepts 30 characters and rejects 31", () => {
+    expect(parseName("a".repeat(30)).ok).toBe(true);
+    expect(parseName("a".repeat(31))).toEqual({
+      ok: false,
+      error: "Use a shorter name (30 characters at most).",
+    });
+  });
+});

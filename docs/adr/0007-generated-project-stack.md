@@ -16,7 +16,7 @@
 | Styling            | CSS Modules, plus `src/styles/global.css`                                                                                                                                                                        |
 | Routing (optional) | The `react-router` package with a data router (`createBrowserRouter` and `RouterProvider`). Routes live in `src/app/routes.tsx`, and the layout in `src/components/layout/AppLayout.tsx`, which uses `<Outlet>`. |
 | Testing            | Vitest, `@testing-library/react`, `@testing-library/jest-dom` and jsdom. Test config is the `test` block in `vite.config.ts`, with setup in `src/test/setup.ts`.                                                 |
-| Linting            | ESLint flat config. We replace Vite's `eslint.config.js` with the same base plus `eslint-config-prettier`.                                                                                                       |
+| Linting            | ESLint flat config (create-vite needs `--eslint`; see ADR 3). We replace Vite's `eslint.config.js` with the same base plus `eslint-config-prettier`.                                                             |
 | Formatting         | Prettier with its default options                                                                                                                                                                                |
 
 ## Starter content

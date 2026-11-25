@@ -23,13 +23,58 @@
     }
   },
   "contributes": {
+    "jsonValidation": [
+      {
+        "fileMatch": "react-architect.json",
+        "url": "./schemas/react-architect.schema.json"
+      }
+    ],
     "commands": [
       {
-        "command": "reactArchitect.hello",
-        "title": "Hello",
+        "command": "reactArchitect.generateComponent",
+        "title": "Generate Component",
+        "category": "React Architect"
+      },
+      {
+        "command": "reactArchitect.generateHook",
+        "title": "Generate Hook",
+        "category": "React Architect"
+      },
+      {
+        "command": "reactArchitect.generateFeature",
+        "title": "Generate Feature",
         "category": "React Architect"
       }
-    ]
+    ],
+    "submenus": [
+      {
+        "id": "reactArchitect.explorerMenu",
+        "label": "React Architect"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "reactArchitect.explorerMenu",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@10"
+        }
+      ],
+      "reactArchitect.explorerMenu": [
+        {
+          "command": "reactArchitect.generateComponent",
+          "group": "generate@1"
+        },
+        {
+          "command": "reactArchitect.generateHook",
+          "group": "generate@2"
+        },
+        {
+          "command": "reactArchitect.generateFeature",
+          "group": "generate@3"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node esbuild.mjs",
@@ -52,6 +97,7 @@
     "@types/vscode": "1.100.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
+    "ajv": "^8.20.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.15.0",
     "prettier": "^3.10.1",
