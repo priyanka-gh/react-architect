@@ -1,0 +1,62 @@
+{
+  "name": "react-architect",
+  "displayName": "React Architect",
+  "description": "Scaffold React + Vite projects and generate components, hooks and features that follow your project's conventions.",
+  "version": "0.0.1",
+  "publisher": "your-publisher-id",
+  "private": true,
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "File generation works in Restricted Mode. Commands that run the project's own tools are disabled until the workspace is trusted."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "reactArchitect.hello",
+        "title": "Hello",
+        "category": "React Architect"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "npm run check-types && npm run lint && node esbuild.mjs --production",
+    "vscode:prepublish": "npm run package",
+    "check-types": "tsc --noEmit && tsc -p test/integration --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "vitest run",
+    "pretest:integration": "node esbuild.mjs && tsc -p test/integration",
+    "test:integration": "vscode-test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.7",
+    "@types/vscode": "1.100.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.74.0",
+    "vitest": "^5.1.2"
+  }
+}
