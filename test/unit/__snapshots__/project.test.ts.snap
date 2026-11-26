@@ -1,0 +1,30 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`projectOverlay > lists the files it creates 1`] = `
+[
+  "react-architect.json",
+  "README.md",
+  ".env.example",
+  ".prettierrc",
+  ".prettierignore",
+  "eslint.config.js",
+  "vite.config.ts",
+  "src/main.tsx",
+  "src/app/App.tsx",
+  "src/app/App.test.tsx",
+  "src/app/routes.tsx",
+  "src/components/layout/AppLayout/AppLayout.tsx",
+  "src/components/layout/AppLayout/AppLayout.module.css",
+  "src/components/layout/AppLayout/AppLayout.test.tsx",
+  "src/features/home/components/Home/Home.tsx",
+  "src/features/home/components/Home/Home.module.css",
+  "src/features/home/components/Home/Home.test.tsx",
+  "src/features/home/hooks/useHome.ts",
+  "src/features/home/hooks/useHome.test.ts",
+  "src/features/home/services/homeApi.ts",
+  "src/features/home/types.ts",
+  "src/features/home/index.ts",
+  "src/styles/global.css",
+  "src/test/setup.ts",
+]
+`;

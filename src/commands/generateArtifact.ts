@@ -9,8 +9,8 @@ import {
 import { getGenerator, type GeneratorId } from "../core/generators";
 import { enclosingFeature } from "../core/generators/featureIndex";
 import { findManifest, findNearestFile } from "../core/manifest/find";
+import { inferManifest } from "../core/manifest/infer";
 import {
-  DEFAULT_MANIFEST,
   MANIFEST_FILE_NAME,
   parseManifest,
   serializeManifest,
@@ -19,7 +19,12 @@ import {
 import { parseName } from "../core/naming";
 import { normalizeRelativePath } from "../core/paths";
 import { checkPlan, type FileOperation, type FilePlan } from "../core/plan";
-import { fileExists, readDirectory, readTextFile } from "../infra/fileSystem";
+import {
+  fileExists,
+  readDirectory,
+  readTextFile,
+  readTextFileIfExists,
+} from "../infra/fileSystem";
 import { writePlanInWorkspace } from "../infra/workspaceEditWriter";
 import { vscodePrompts, type Prompts } from "./prompts";
 
@@ -200,7 +205,7 @@ export async function generateArtifact(
 }
 
 /** The clicked folder, else the active file's folder, else a workspace folder. */
-async function startFolder(
+export async function startFolder(
   clickedFolder: vscode.Uri | undefined,
   prompts: Prompts,
 ): Promise<vscode.Uri | undefined> {
@@ -221,7 +226,7 @@ async function startFolder(
   return (await prompts.pickWorkspaceFolder())?.uri;
 }
 
-type LoadedProject =
+export type LoadedProject =
   | {
       status: "loaded";
       root: string;
@@ -232,8 +237,11 @@ type LoadedProject =
   | { status: "cancelled" }
   | { status: "failed"; message: string };
 
-/** Finds the project's manifest, or offers to create one next to package.json (ADR 1). */
-async function loadProject(
+/**
+ * Finds the project's manifest. Without one, suggests settings based on the
+ * project and offers to create it next to package.json (ADR 1).
+ */
+export async function loadProject(
   start: string,
   workspaceFolder: string,
   prompts: Prompts,
@@ -271,18 +279,22 @@ async function loadProject(
     };
   }
   const root = path.dirname(packageJson);
-  if (!(await prompts.confirmCreateManifest(path.basename(root)))) {
+  const { manifest, notes } = await inferManifest(root, {
+    readDirectory,
+    readText: readTextFileIfExists,
+  });
+  if (!(await prompts.confirmCreateManifest(path.basename(root), notes))) {
     return { status: "cancelled" };
   }
   return {
     status: "loaded",
     root,
-    manifest: DEFAULT_MANIFEST,
+    manifest,
     extraOperations: [
       {
         kind: "create",
         path: MANIFEST_FILE_NAME,
-        content: serializeManifest(DEFAULT_MANIFEST),
+        content: serializeManifest(manifest),
       },
     ],
   };

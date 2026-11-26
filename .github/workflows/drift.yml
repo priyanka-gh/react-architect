@@ -1,0 +1,23 @@
+name: create-vite drift check
+
+# Weekly: does the newest create-vite still work with our overlay? A failure
+# here means the pinned version needs a deliberate update (ADR 3); the pin
+# itself never changes automatically.
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  e2e-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npm run test:e2e
+        env:
+          CREATE_VITE_VERSION: latest

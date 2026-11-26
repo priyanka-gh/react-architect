@@ -45,6 +45,26 @@ export async function readTextFile(absolutePath: string): Promise<string> {
   return new TextDecoder().decode(bytes);
 }
 
+/** File contents, or undefined if the file doesn't exist. */
+export async function readTextFileIfExists(
+  absolutePath: string,
+): Promise<string | undefined> {
+  try {
+    return await readTextFile(absolutePath);
+  } catch (error) {
+    if (isMissing(error) || isDirectoryError(error)) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+function isDirectoryError(error: unknown): boolean {
+  return (
+    error instanceof vscode.FileSystemError && error.code === "FileIsADirectory"
+  );
+}
+
 function isMissing(error: unknown): boolean {
   return (
     error instanceof vscode.FileSystemError &&

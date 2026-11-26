@@ -1,11 +1,19 @@
 import * as assert from "node:assert";
 import * as vscode from "vscode";
 
-const EXTENSION_ID = "your-publisher-id.react-architect";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+// Read from package.json, so changing the publisher doesn't break the tests.
+const manifest = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, "../../../package.json"), "utf8"),
+) as { publisher: string; name: string };
+const EXTENSION_ID = `${manifest.publisher}.${manifest.name}`;
 const COMMANDS = [
   "reactArchitect.generateComponent",
   "reactArchitect.generateHook",
   "reactArchitect.generateFeature",
+  "reactArchitect.setUpProject",
 ];
 
 suite("Extension", () => {
@@ -19,9 +27,9 @@ suite("Extension", () => {
     assert.strictEqual(extension.isActive, true);
   });
 
-  test("registers the generate commands", async () => {
+  test("registers every command", async () => {
     const registered = await vscode.commands.getCommands(true);
-    for (const command of COMMANDS) {
+    for (const command of [...COMMANDS, "reactArchitect.createProject"]) {
       assert.ok(registered.includes(command), `${command} is not registered`);
     }
   });

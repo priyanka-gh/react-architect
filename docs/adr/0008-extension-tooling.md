@@ -39,14 +39,18 @@ src/
 
 ## Tests
 
-| Level       | Tool                                                 | Covers                                                                                                                             |
-| ----------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Unit        | Vitest                                               | `core/` and `infra/`, with snapshot tests of file plans                                                                            |
-| Integration | `@vscode/test-cli` + `@vscode/test-electron` (Mocha) | Commands run against fixture workspaces                                                                                            |
-| End to end  | A Node script, without VS Code                       | Creates a project in a temp directory using the same `core/` code, then runs `install`, `build`, `lint`, `test` and `format:check` |
+| Level       | Tool                                                 | Covers                                                                                                                                                                                                                                         |
+| ----------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit        | Vitest                                               | `core/` and `infra/`, with snapshot tests of file plans                                                                                                                                                                                        |
+| Integration | `@vscode/test-cli` + `@vscode/test-electron` (Mocha) | Commands run against fixture workspaces                                                                                                                                                                                                        |
+| End to end  | Vitest (`npm run test:e2e`), without VS Code         | Creates projects in a temp directory with the real create-vite and npm, using the same `core/` and `infra/` code as the command, then runs `build`, ESLint with zero warnings allowed, `test` and `format:check`. Also cancels during install. |
 
-CI runs on GitHub Actions, on Ubuntu, macOS and Windows. It also runs the weekly drift job from [ADR 3](0003-base-scaffold-with-pinned-create-vite.md).
+CI runs on GitHub Actions, on Ubuntu, macOS and Windows, with the end-to-end test as a separate job on all three. The weekly drift job from [ADR 3](0003-base-scaffold-with-pinned-create-vite.md) is in `.github/workflows/drift.yml`.
+
+The integration tests for Create React Project fake the programs it runs, so they check the command's questions, cleanup and retry quickly. The end-to-end test covers the real programs.
 
 ## Publishing
 
-`@vscode/vsce` publishes to the VS Code Marketplace, and `ovsx` publishes to Open VSX. Check that the extension name is available before the first publish.
+`@vscode/vsce` publishes to the VS Code Marketplace, and `ovsx` publishes to Open VSX. Both run from `.github/workflows/release.yml` when a `v*` tag is pushed: it checks that the tag matches `package.json`, runs every test including end-to-end, builds the `.vsix` once and publishes that same file to both registries, then attaches it to a GitHub release. Open VSX is skipped when its token isn't configured. The steps that need the owner's accounts are in [docs/PUBLISHING.md](../PUBLISHING.md).
+
+The `.vsix` holds only the bundle, `package.json`, README, changelog, licence, schema and icon (`.vscodeignore` is an allowlist). Runtime dependencies are bundled by esbuild, so packaging uses `--no-dependencies`. The integration tests also pass against the minified production bundle.

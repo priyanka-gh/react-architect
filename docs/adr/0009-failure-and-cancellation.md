@@ -4,11 +4,11 @@
 
 ## Project creation
 
-- **Target folder:** it must not exist, or must be empty. Otherwise the command refuses and offers no overwrite option.
-- **Progress:** the steps run inside `window.withProgress({ cancellable: true })` and report as they go: scaffold, overlay, write manifest, install, format, open.
+- **Target folder:** it must not exist, or must be empty. Otherwise the command refuses and offers no overwrite option. A folder holding only `.git` counts as empty, as it does for create-vite. The name prompt checks this as you type.
+- **Progress:** the steps run inside `window.withProgress({ cancellable: true })` and report as they go: check Node.js, scaffold, overlay (which writes the manifest), install, format. Opening the project is offered afterwards, as **Open** or **Open in New Window**.
 - **Stopping a process:** on cancellation or failure while a process is running, kill its whole process tree.
 - **Cleanup:**
-  - If this run created the target folder, ask in a modal: "Delete the partially created project at `<path>`?" with **Delete** and **Keep**.
+  - If this run created the target folder, ask in a modal: "Delete the partially created project at `<path>`?" with **Delete** and the modal's own **Cancel**, which keeps it.
   - Never delete a folder that existed before the run started. Whether the run created the folder is recorded at the moment it is created, never inferred afterwards.
 - **Failed install:** if `npm install` fails after the scaffold and overlay succeeded, project creation has still succeeded. Keep the project and show "Project created, but npm install failed." with **Show Output**, **Retry Install** and **Open Anyway**.
 

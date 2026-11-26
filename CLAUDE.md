@@ -19,6 +19,8 @@ A VS Code extension (portfolio project) that scaffolds React + Vite projects and
 npm run check-types && npm run lint && npm run format:check && npm run test:unit && npm run test:integration
 ```
 
+Also run `npm run test:e2e` (needs network, about a minute) after changing anything under `src/core/project/`, `src/core/templates/` or `src/infra/`.
+
 ## Versions
 
 - `@types/vscode` stays pinned exactly to the `engines.vscode` floor (1.100.0).

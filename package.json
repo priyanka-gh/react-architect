@@ -2,9 +2,32 @@
   "name": "react-architect",
   "displayName": "React Architect",
   "description": "Scaffold React + Vite projects and generate components, hooks and features that follow your project's conventions.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "your-publisher-id",
-  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/priyanka-gh/react-architect"
+  },
+  "bugs": {
+    "url": "https://github.com/priyanka-gh/react-architect/issues"
+  },
+  "homepage": "https://github.com/priyanka-gh/react-architect#readme",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#0F766E",
+    "theme": "dark"
+  },
+  "keywords": [
+    "react",
+    "vite",
+    "typescript",
+    "scaffold",
+    "generator",
+    "component",
+    "hook",
+    "architecture"
+  ],
   "engines": {
     "vscode": "^1.100.0"
   },
@@ -29,7 +52,24 @@
         "url": "./schemas/react-architect.schema.json"
       }
     ],
+    "viewsWelcome": [
+      {
+        "view": "explorer",
+        "contents": "Start a new React app with TypeScript, Vite and a feature-based structure.\n[Create React Project](command:reactArchitect.createProject)",
+        "when": "workbenchState == empty"
+      }
+    ],
     "commands": [
+      {
+        "command": "reactArchitect.createProject",
+        "title": "Create React Project",
+        "category": "React Architect"
+      },
+      {
+        "command": "reactArchitect.setUpProject",
+        "title": "Set Up Existing Project",
+        "category": "React Architect"
+      },
       {
         "command": "reactArchitect.generateComponent",
         "title": "Generate Component",
@@ -72,6 +112,10 @@
         {
           "command": "reactArchitect.generateFeature",
           "group": "generate@3"
+        },
+        {
+          "command": "reactArchitect.setUpProject",
+          "group": "setup@1"
         }
       ]
     }
@@ -88,21 +132,30 @@
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "vitest run",
     "pretest:integration": "node esbuild.mjs && tsc -p test/integration",
-    "test:integration": "vscode-test"
+    "test:integration": "vscode-test",
+    "test:e2e": "vitest run --config vitest.e2e.config.mts",
+    "package:vsix": "vsce package --no-dependencies"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/cross-spawn": "^6.0.6",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.20.7",
     "@types/vscode": "1.100.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.1.1",
     "ajv": "^8.20.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.15.0",
+    "ovsx": "^1.4.0",
     "prettier": "^3.10.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.74.0",
     "vitest": "^5.1.2"
+  },
+  "dependencies": {
+    "cross-spawn": "^7.0.6",
+    "tree-kill": "^1.2.2"
   }
 }

@@ -19,7 +19,11 @@ export interface Prompts {
     question: string,
     defaultAnswer: boolean,
   ): Promise<boolean | undefined>;
-  confirmCreateManifest(projectName: string): Promise<boolean>;
+  /** `settings` explains each suggested setting, one sentence per line. */
+  confirmCreateManifest(
+    projectName: string,
+    settings: string[],
+  ): Promise<boolean>;
   askConflictChoice(
     existingFiles: string[],
   ): Promise<ConflictChoice | undefined>;
@@ -55,14 +59,17 @@ export const vscodePrompts: Prompts = {
     return picked?.answer;
   },
 
-  async confirmCreateManifest(projectName) {
+  async confirmCreateManifest(projectName, settings) {
     const create = "Create";
     const answer = await vscode.window.showInformationMessage(
-      `"${projectName}" has no react-architect.json yet. Create one with the default settings?`,
+      `"${projectName}" has no react-architect.json yet. Create one with these settings?`,
       {
         modal: true,
-        detail:
-          "It records where components, hooks and features go. You can edit it at any time.",
+        detail: [
+          ...settings,
+          "",
+          "You can change any of these later by editing react-architect.json.",
+        ].join("\n"),
       },
       create,
     );
@@ -97,6 +104,104 @@ export const vscodePrompts: Prompts = {
 
   showError(message) {
     void vscode.window.showErrorMessage(message);
+  },
+
+  showWarning(message) {
+    void vscode.window.showWarningMessage(message);
+  },
+};
+
+/** The questions Create React Project asks; see Prompts for why this is an interface. */
+export interface ProjectPrompts {
+  pickParentFolder(defaultFolder: vscode.Uri): Promise<vscode.Uri | undefined>;
+  askProjectName(
+    validate: (value: string) => Promise<string | undefined>,
+  ): Promise<string | undefined>;
+  askYesNo(
+    question: string,
+    defaultAnswer: boolean,
+  ): Promise<boolean | undefined>;
+  /** "open" reuses this window; "newWindow" opens another. */
+  projectCreated(name: string): Promise<"open" | "newWindow" | undefined>;
+  installFailed(name: string): Promise<"retry" | "open" | "output" | undefined>;
+  confirmDelete(folder: string): Promise<boolean>;
+  showError(message: string): Promise<"output" | undefined>;
+  showWarning(message: string): void;
+}
+
+export const vscodeProjectPrompts: ProjectPrompts = {
+  async pickParentFolder(defaultFolder) {
+    const picked = await vscode.window.showOpenDialog({
+      title: "Create React Project: choose where to put it",
+      openLabel: "Create Project Here",
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: false,
+      defaultUri: defaultFolder,
+    });
+    return picked?.[0];
+  },
+
+  async askProjectName(validate) {
+    return vscode.window.showInputBox({
+      title: "Create React Project",
+      prompt: "Project name (also the folder name)",
+      placeHolder: "For example: my-app",
+      validateInput: validate,
+      ignoreFocusOut: true,
+    });
+  },
+
+  askYesNo: (question, defaultAnswer) =>
+    vscodePrompts.askYesNo(question, defaultAnswer),
+
+  async projectCreated(name) {
+    const open = "Open";
+    const newWindow = "Open in New Window";
+    const answer = await vscode.window.showInformationMessage(
+      `Created ${name}.`,
+      open,
+      newWindow,
+    );
+    if (answer === open) {
+      return "open";
+    }
+    return answer === newWindow ? "newWindow" : undefined;
+  },
+
+  async installFailed(name) {
+    const retry = "Retry Install";
+    const open = "Open Anyway";
+    const output = "Show Output";
+    const answer = await vscode.window.showWarningMessage(
+      `Created ${name}, but npm install failed.`,
+      retry,
+      open,
+      output,
+    );
+    if (answer === retry) {
+      return "retry";
+    }
+    if (answer === open) {
+      return "open";
+    }
+    return answer === output ? "output" : undefined;
+  },
+
+  async confirmDelete(folder) {
+    const remove = "Delete";
+    const answer = await vscode.window.showWarningMessage(
+      `Delete the partially created project at ${folder}?`,
+      { modal: true, detail: "Choose Cancel to keep it." },
+      remove,
+    );
+    return answer === remove;
+  },
+
+  async showError(message) {
+    const output = "Show Output";
+    const answer = await vscode.window.showErrorMessage(message, output);
+    return answer === output ? "output" : undefined;
   },
 
   showWarning(message) {

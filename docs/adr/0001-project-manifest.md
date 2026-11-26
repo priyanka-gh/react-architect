@@ -12,7 +12,12 @@ Each React project has a `react-architect.json` file next to its `package.json`.
 
 - **Lookup:** walk up from the folder the user clicked (or the active editor's folder) to the nearest `react-architect.json`, stopping at the workspace folder root. This handles monorepos without extra configuration.
 - **Creation:** the project generator writes the file.
-- **Missing manifest (MVP):** offer to create one with the defaults, showing it first. Inference from an existing project's layout comes in Phase 4, and only ever produces a proposal that the user confirms.
+- **Missing manifest:** suggest settings from the project (`core/manifest/infer.ts`) and show each one with its reason before writing anything. Generating offers this on first use, and **Set Up Existing Project** does it on its own and opens the file for review. The rules:
+  - **Paths:** the first existing folder from a short list of common layouts (for example `src/components`, `src/shared/components`, `src/ui`; `src/features`, `src/modules`, `src/domains`). Otherwise the default.
+  - **Styling:** `none` when package.json lists another styling library (Tailwind, styled-components, Emotion, vanilla-extract, Stitches). Otherwise `css-modules`.
+  - **Tests:** `vitest` only when both `vitest` and `@testing-library/react` are installed, because generated tests need both. Jest projects get `none`, since generated tests are Vitest tests.
+  - **Warnings,** without blocking: no `react` dependency, or no TypeScript (neither the dependency nor `tsconfig.json`), because generated files are `.tsx`.
+  - The search for existing `.module.css` files skips `node_modules`, build output and `.git`, and stops after 500 folders, so large repositories stay fast.
 - **Editor support:** the extension contributes a JSON Schema through `contributes.jsonValidation`, so the file gets autocomplete and validation.
 
 Version 1 of the schema (the real file is plain JSON, so it has no comments or trailing commas):

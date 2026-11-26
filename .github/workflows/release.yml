@@ -1,0 +1,52 @@
+name: Release
+
+# Push a tag like v0.1.0 to publish. Needs the VSCE_PAT secret (and OVSX_PAT
+# for Open VSX); see docs/PUBLISHING.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      # Job-level, so the Open VSX step's `if` can see whether it's set.
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+
+      - name: Check that the tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME doesn't match package.json version $version" >&2
+            exit 1
+          fi
+
+      - run: npm run check-types
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run test:unit
+      - run: xvfb-run -a npm run test:integration
+      - run: npm run test:e2e
+
+      - run: npm run package:vsix
+      - name: Publish to the VS Code Marketplace
+        run: npx vsce publish --no-dependencies --packagePath react-architect-*.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      - name: Publish to Open VSX
+        if: env.OVSX_PAT != ''
+        run: npx ovsx publish react-architect-*.vsix
+      - name: Attach the .vsix to a GitHub release
+        run: gh release create "$GITHUB_REF_NAME" react-architect-*.vsix --title "$GITHUB_REF_NAME" --notes-file CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -15,7 +15,7 @@ Run create-vite at an exact pinned version with the `react-ts` template, then ap
 - **Overlay policy:** files we change are replaced wholesale, never patched with string edits. The one exception is `package.json`, which is parsed as JSON, merged (dependencies, devDependencies, scripts) and written back with 2-space indentation.
 - **Files we keep as generated:** `index.html`, `public/`, `tsconfig*.json`, `.gitignore`.
 - **Files we replace:** `src/**`, `vite.config.ts`, `eslint.config.js`.
-- **Drift detection:** a weekly scheduled CI job runs the end-to-end test against `create-vite@latest`. A failure means the pin needs a deliberate update; it never updates silently.
+- **Drift detection:** a weekly scheduled CI job (`.github/workflows/drift.yml`) runs the end-to-end test against `create-vite@latest`, by setting `CREATE_VITE_VERSION=latest`. A failed run means the pin needs a deliberate update; it never updates silently.
 
 ## Consequences
 

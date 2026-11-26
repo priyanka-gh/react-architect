@@ -26,6 +26,7 @@ function scripted(script: Script) {
   const errors: string[] = [];
   const yesNo = [...(script.yesNo ?? [])];
   let previewLines: string[] = [];
+  let suggestedSettings: string[] = [];
 
   const prompts: Prompts = {
     pickWorkspaceFolder: async () => vscode.workspace.workspaceFolders?.[0],
@@ -40,8 +41,9 @@ function scripted(script: Script) {
       asked.push(question);
       return yesNo.shift();
     },
-    confirmCreateManifest: async () => {
+    confirmCreateManifest: async (_project, settings) => {
       asked.push("create manifest");
+      suggestedSettings = settings;
       return script.createManifest ?? false;
     },
     askConflictChoice: async (files) => {
@@ -56,7 +58,13 @@ function scripted(script: Script) {
     showError: (message) => errors.push(message),
     showWarning: () => undefined,
   };
-  return { prompts, asked, errors, previewLines: () => previewLines };
+  return {
+    prompts,
+    asked,
+    errors,
+    previewLines: () => previewLines,
+    suggestedSettings: () => suggestedSettings,
+  };
 }
 
 const workspaceRoot = () => {
@@ -163,11 +171,50 @@ suite("Generate commands", () => {
 
     assert.strictEqual(outcome.status, "generated");
     assert.strictEqual(asked[0], "create manifest");
+    // package.json lists no test tools, so the suggestion turns tests off.
     assert.strictEqual(
       app.read("react-architect.json"),
-      serializeManifest(DEFAULT_MANIFEST),
+      serializeManifest({
+        ...DEFAULT_MANIFEST,
+        testing: { framework: "none", generateTests: false },
+      }),
     );
     assert.ok(app.exists("src/useCart.ts"));
+  });
+
+  test("suggests settings that follow the project's existing folders and tools", async () => {
+    const app = project(
+      {
+        "package.json": JSON.stringify({
+          dependencies: { react: "^19.0.0" },
+          devDependencies: {
+            typescript: "^6.0.0",
+            vitest: "^5.0.0",
+            "@testing-library/react": "^16.0.0",
+          },
+        }),
+        "src/ui/Button.tsx": "export {};\n",
+      },
+      { manifest: false },
+    );
+    await vscode.window.showTextDocument(app.uri("package.json"));
+    const { prompts, suggestedSettings } = scripted({
+      name: "card",
+      createManifest: true,
+      yesNo: [true],
+    });
+
+    const outcome = await generateArtifact("component", undefined, prompts);
+
+    assert.strictEqual(outcome.status, "generated");
+    assert.ok(
+      suggestedSettings().includes(
+        "Components go in src/ui, which already exists.",
+      ),
+      suggestedSettings().join("\n"),
+    );
+    assert.ok(app.exists("src/ui/Card/Card.tsx"));
+    assert.ok(app.exists("src/ui/Card/Card.test.tsx"));
   });
 
   test("writes nothing when the user declines to create react-architect.json", async () => {
