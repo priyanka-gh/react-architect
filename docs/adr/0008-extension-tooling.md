@@ -48,6 +48,8 @@ src/
 
 CI runs on GitHub Actions, on Ubuntu, macOS and Windows, with the end-to-end test as a separate job on all three. The weekly drift job from [ADR 3](0003-base-scaffold-with-pinned-create-vite.md) is in `.github/workflows/drift.yml`.
 
+The end-to-end test creates projects under the temp folder's full path (`realpathSync.native`). On GitHub's Windows runners the temp folder is reached through a short 8.3 name such as `C:\Users\RUNNER~1`, and a project under such a path breaks Vite and Vitest's module resolution (one module, two paths). People pick folders through VS Code's dialog, which always gives full paths.
+
 The integration tests for Create React Project fake the programs it runs, so they check the command's questions, cleanup and retry quickly. The end-to-end test covers the real programs.
 
 ## Publishing

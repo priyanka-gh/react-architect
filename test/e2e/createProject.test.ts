@@ -5,7 +5,13 @@
  * Yarn projects are skipped when those aren't installed.
  */
 import spawn from "cross-spawn";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -34,7 +40,12 @@ import {
 import { runProcess } from "../../src/infra/process";
 import { nodeProjectDisk } from "../../src/infra/projectDisk";
 
-const parent = mkdtempSync(path.join(tmpdir(), "react-architect-e2e-"));
+// The full path, as VS Code's folder dialog gives. On GitHub's Windows runners
+// the temp folder is a short 8.3 name (C:\Users\RUNNER~1\...); Vite then resolves
+// "@/" imports under one name and Vitest tracks modules under the other.
+const parent = realpathSync.native(
+  mkdtempSync(path.join(tmpdir(), "react-architect-e2e-")),
+);
 afterAll(() => {
   if (!process.env.KEEP_E2E_PROJECTS) {
     rmSync(parent, { recursive: true, force: true });
