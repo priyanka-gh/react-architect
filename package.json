@@ -35,6 +35,12 @@
     "Other"
   ],
   "main": "./dist/extension.js",
+  "bin": {
+    "react-architect": "./dist/cli.js"
+  },
+  "activationEvents": [
+    "workspaceContains:**/react-architect.json"
+  ],
   "extensionKind": [
     "workspace"
   ],
@@ -57,6 +63,11 @@
         "view": "explorer",
         "contents": "Start a new React app with TypeScript, Vite and a feature-based structure.\n[Create React Project](command:reactArchitect.createProject)",
         "when": "workbenchState == empty"
+      },
+      {
+        "view": "reactArchitect.projectMap",
+        "contents": "The Project Map shows each feature, what it shares, which features use which, and where the structure rules are broken.\nIt needs a react-architect.json in the project.\n[Set Up Existing Project](command:reactArchitect.setUpProject)\n[Create React Project](command:reactArchitect.createProject)",
+        "when": "!reactArchitect.hasProject"
       }
     ],
     "commands": [
@@ -84,6 +95,45 @@
         "command": "reactArchitect.generateFeature",
         "title": "Generate Feature",
         "category": "React Architect"
+      },
+      {
+        "command": "reactArchitect.generatePage",
+        "title": "Generate Page",
+        "category": "React Architect"
+      },
+      {
+        "command": "reactArchitect.renameFeature",
+        "title": "Rename Feature…",
+        "category": "React Architect",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "reactArchitect.moveToShared",
+        "title": "Move to Shared Components",
+        "category": "React Architect"
+      },
+      {
+        "command": "reactArchitect.refreshProjectMap",
+        "title": "Refresh Project Map",
+        "category": "React Architect",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "reactArchitect.chooseStructure",
+        "title": "Choose Structure…",
+        "category": "React Architect",
+        "icon": "$(layers)"
+      },
+      {
+        "command": "reactArchitect.importStructure",
+        "title": "Import Structure…",
+        "category": "React Architect"
+      },
+      {
+        "command": "reactArchitect.showStructureReport",
+        "title": "Show Structure Report",
+        "category": "React Architect",
+        "icon": "$(output)"
       }
     ],
     "submenus": [
@@ -116,6 +166,90 @@
         {
           "command": "reactArchitect.setUpProject",
           "group": "setup@1"
+        },
+        {
+          "command": "reactArchitect.generatePage",
+          "group": "generate@4"
+        },
+        {
+          "command": "reactArchitect.renameFeature",
+          "group": "refactor@1",
+          "when": "resourcePath in reactArchitect.featureFolders"
+        },
+        {
+          "command": "reactArchitect.moveToShared",
+          "group": "refactor@2",
+          "when": "resourcePath in reactArchitect.featureComponentFolders"
+        },
+        {
+          "command": "reactArchitect.chooseStructure",
+          "group": "setup@2"
+        },
+        {
+          "command": "reactArchitect.importStructure",
+          "group": "setup@3"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "reactArchitect.refreshProjectMap",
+          "when": "view == reactArchitect.projectMap",
+          "group": "navigation"
+        },
+        {
+          "command": "reactArchitect.chooseStructure",
+          "when": "view == reactArchitect.projectMap",
+          "group": "structure@1"
+        },
+        {
+          "command": "reactArchitect.importStructure",
+          "when": "view == reactArchitect.projectMap",
+          "group": "structure@2"
+        },
+        {
+          "command": "reactArchitect.showStructureReport",
+          "when": "view == reactArchitect.projectMap",
+          "group": "structure@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "reactArchitect.renameFeature",
+          "when": "view == reactArchitect.projectMap && viewItem == feature",
+          "group": "inline"
+        },
+        {
+          "command": "reactArchitect.renameFeature",
+          "when": "view == reactArchitect.projectMap && viewItem == feature",
+          "group": "refactor@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "reactArchitect.refreshProjectMap",
+          "when": "reactArchitect.hasProject"
+        },
+        {
+          "command": "reactArchitect.showStructureReport",
+          "when": "reactArchitect.hasProject"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "reactArchitect",
+          "title": "React Architect",
+          "icon": "images/activity-bar.svg"
+        }
+      ]
+    },
+    "views": {
+      "reactArchitect": [
+        {
+          "id": "reactArchitect.projectMap",
+          "name": "Project Map",
+          "contextualTitle": "React Architect"
         }
       ]
     }
@@ -150,12 +284,12 @@
     "eslint": "^10.15.0",
     "ovsx": "^1.4.0",
     "prettier": "^3.10.1",
-    "typescript": "^6.0.3",
     "typescript-eslint": "^8.74.0",
     "vitest": "^5.1.2"
   },
   "dependencies": {
     "cross-spawn": "^7.0.6",
-    "tree-kill": "^1.2.2"
+    "tree-kill": "^1.2.2",
+    "typescript": "^6.0.3"
   }
 }

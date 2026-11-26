@@ -2,6 +2,8 @@
 
 **Status:** Accepted
 
+Since [ADR 10](0010-project-creation-choices.md), most of this is the recommended setup rather than the only one: styling, tests, routing, `@/` imports, git, package manager and folder names are chosen when creating a project.
+
 ## Scope of the MVP
 
 - **TypeScript only.** JavaScript output would double the templates and the test matrix. How to support it is decided when it is actually built.

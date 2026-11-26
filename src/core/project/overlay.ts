@@ -1,27 +1,37 @@
 import { getGenerator } from "../generators";
-import {
-  DEFAULT_MANIFEST,
-  MANIFEST_FILE_NAME,
-  serializeManifest,
-} from "../manifest/schema";
+import { MANIFEST_FILE_NAME, serializeManifest } from "../manifest/schema";
 import { parseName } from "../naming";
 import type { FileOperation } from "../plan";
 import {
+  appLayoutFolder,
   appLayoutSource,
+  appLayoutStylesheetName,
   appLayoutStylesSource,
   appLayoutTestSource,
   appSource,
   appTestSource,
   envExampleSource,
   eslintConfigSource,
+  gitignoreSource,
   globalStylesSource,
   mainSource,
+  prettierIgnoreSource,
   readmeSource,
   routesSource,
   testSetupSource,
+  tsconfigAppSource,
   viteConfigSource,
+  yarnrcSource,
+  type ProjectTemplateContext,
 } from "../templates/project";
-import { DEV_DEPENDENCIES, ROUTING_DEPENDENCIES } from "./dependencies";
+import {
+  BASE_DEV_DEPENDENCIES,
+  ROUTING_DEPENDENCIES,
+  TAILWIND_DEV_DEPENDENCIES,
+  TEST_DEV_DEPENDENCIES,
+} from "./dependencies";
+import { manifestFor, type ProjectOptions } from "./options";
+import { PACKAGE_MANAGERS } from "./packageManager";
 import type { PackageJsonAdditions } from "./packageJson";
 
 export interface ProjectOverlay {
@@ -32,68 +42,94 @@ export interface ProjectOverlay {
   packageJson: PackageJsonAdditions;
 }
 
-/** What turns a fresh create-vite project into a React Architect one (ADR 7). */
-export function projectOverlay(options: {
-  name: string;
-  routing: boolean;
-}): ProjectOverlay {
-  const { name, routing } = options;
-  const create = (path: string, content: string): FileOperation => ({
-    kind: "create",
-    path,
-    content,
-  });
+/** What turns a fresh create-vite project into a React Architect one (ADR 7 and 10). */
+export function projectOverlay(
+  options: Omit<ProjectOptions, "parentDirectory" | "git" | "install">,
+): ProjectOverlay {
+  const manifest = manifestFor(options);
+  const packageManager = PACKAGE_MANAGERS[options.packageManager];
+  const context: ProjectTemplateContext = { ...options, packageManager };
+  const files: FileOperation[] = [];
+  const add = (path: string, content: string | undefined) => {
+    if (content !== undefined) {
+      files.push({ kind: "create", path, content });
+    }
+  };
 
+  add(MANIFEST_FILE_NAME, serializeManifest(manifest));
+  add("README.md", readmeSource(context));
+  add(".env.example", envExampleSource());
+  add(".gitignore", gitignoreSource(context));
+  add(".prettierrc", "{}\n");
+  add(".prettierignore", prettierIgnoreSource());
+  if (packageManager.id === "yarn") {
+    add(".yarnrc.yml", yarnrcSource());
+  }
+  add("eslint.config.js", eslintConfigSource());
+  add("vite.config.ts", viteConfigSource(context));
+  if (options.pathAlias) {
+    add("tsconfig.app.json", tsconfigAppSource());
+  }
+
+  add("src/main.tsx", mainSource(context));
+  add("src/app/App.tsx", appSource(context));
+  if (options.tests) {
+    add("src/app/App.test.tsx", appTestSource());
+    add("src/test/setup.ts", testSetupSource());
+  }
+  add("src/styles/global.css", globalStylesSource(context));
+
+  if (options.routing) {
+    const layout = appLayoutFolder(options.paths);
+    add("src/app/routes.tsx", routesSource(context));
+    add(`${layout}/AppLayout.tsx`, appLayoutSource(context));
+    const stylesheet = appLayoutStylesheetName(options.styling);
+    if (stylesheet !== undefined) {
+      add(`${layout}/${stylesheet}`, appLayoutStylesSource(context));
+    }
+    if (options.tests) {
+      add(`${layout}/AppLayout.test.tsx`, appLayoutTestSource());
+    }
+  }
+
+  // The starter feature comes from the same generator people run, so project
+  // creation exercises the code generation path (ADR 7).
   const home = parseName("home");
   if (!home.ok) {
     throw new Error(home.error);
   }
-  // The starter feature comes from the same generator users run, so project
-  // creation exercises the code generation path (ADR 7).
   const homeFeature = getGenerator("feature").generate(
     {
       name: home.name,
-      directory: DEFAULT_MANIFEST.paths.features,
-      includeTests: true,
+      directory: manifest.paths.features,
+      includeTests: options.tests,
       exportFromFeature: false,
     },
-    DEFAULT_MANIFEST,
+    manifest,
   );
-
-  const layout = `${DEFAULT_MANIFEST.paths.components}/layout/AppLayout`;
-  const operations: FileOperation[] = [
-    create(MANIFEST_FILE_NAME, serializeManifest(DEFAULT_MANIFEST)),
-    create("README.md", readmeSource({ name, routing })),
-    create(".env.example", envExampleSource()),
-    create(".prettierrc", "{}\n"),
-    create(".prettierignore", "package-lock.json\n"),
-    create("eslint.config.js", eslintConfigSource()),
-    create("vite.config.ts", viteConfigSource()),
-    create("src/main.tsx", mainSource()),
-    create("src/app/App.tsx", appSource({ routing })),
-    create("src/app/App.test.tsx", appTestSource()),
-    ...(routing
-      ? [
-          create("src/app/routes.tsx", routesSource()),
-          create(`${layout}/AppLayout.tsx`, appLayoutSource()),
-          create(`${layout}/AppLayout.module.css`, appLayoutStylesSource()),
-          create(`${layout}/AppLayout.test.tsx`, appLayoutTestSource()),
-        ]
-      : []),
-    ...homeFeature.operations,
-    create("src/styles/global.css", globalStylesSource()),
-    create("src/test/setup.ts", testSetupSource()),
-  ];
+  files.push(...homeFeature.operations);
 
   return {
-    remove: ["src", "README.md", "eslint.config.js", "vite.config.ts"],
-    operations,
+    remove: [
+      "src",
+      "README.md",
+      ".gitignore",
+      "eslint.config.js",
+      "vite.config.ts",
+      ...(options.pathAlias ? ["tsconfig.app.json"] : []),
+    ],
+    operations: files,
     packageJson: {
-      dependencies: routing ? ROUTING_DEPENDENCIES : {},
-      devDependencies: DEV_DEPENDENCIES,
+      dependencies: options.routing ? ROUTING_DEPENDENCIES : {},
+      devDependencies: {
+        ...BASE_DEV_DEPENDENCIES,
+        ...(options.tests ? TEST_DEV_DEPENDENCIES : {}),
+        ...(options.styling === "tailwind" ? TAILWIND_DEV_DEPENDENCIES : {}),
+      },
       scripts: {
-        test: "vitest run",
-        "test:watch": "vitest",
+        ...(options.tests
+          ? { test: "vitest run", "test:watch": "vitest" }
+          : {}),
         format: "prettier --write .",
         "format:check": "prettier --check .",
       },

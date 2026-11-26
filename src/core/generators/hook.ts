@@ -3,7 +3,7 @@ import type { Manifest } from "../manifest/schema";
 import { hookName } from "../naming";
 import type { FileOperation } from "../plan";
 import { hookSource, hookTestSource } from "../templates/hook";
-import { enclosingFeature, featureExport } from "./featureIndex";
+import { enclosingUnit, featureExport, kindLayerFolders } from "./featureIndex";
 import type { Generator } from "./types";
 
 /** useCart.ts and useCart.test.ts, side by side (ADR 5). */
@@ -32,7 +32,9 @@ export const hookGenerator: Generator = {
   label: "Hook",
   namePlaceholder: "For example: cart (becomes useCart)",
   displayName: (name) => hookName(name),
-  defaultDirectory: (manifest) => manifest.paths.hooks,
+  defaultDirectory: (manifest) =>
+    kindLayerFolders(manifest, "hook")[0] ?? manifest.paths.hooks,
+  directoryChoices: (manifest) => kindLayerFolders(manifest, "hook"),
   canExportFromFeature: true,
 
   generate(input, manifest) {
@@ -44,10 +46,15 @@ export const hookGenerator: Generator = {
       input.includeTests,
     );
 
-    const feature = enclosingFeature(input.directory, manifest);
-    if (input.exportFromFeature && feature !== undefined) {
+    const unit = enclosingUnit(input.directory, manifest);
+    if (input.exportFromFeature && unit !== undefined) {
       operations.push(
-        featureExport(feature, mainFile.replace(/\.ts$/, ""), name),
+        featureExport(
+          unit.folder,
+          mainFile.replace(/\.ts$/, ""),
+          name,
+          unit.entry,
+        ),
       );
     }
     return { operations, mainFile };

@@ -1,4 +1,7 @@
 import { normalizeRelativePath } from "../paths";
+import type { StructureConfig } from "../structure/model";
+import { RULE_IDS, type RuleId } from "../structure/rules";
+import { readStructure } from "../structure/validate";
 
 /**
  * The project manifest, react-architect.json. See ADR 1.
@@ -10,14 +13,32 @@ import { normalizeRelativePath } from "../paths";
 export const MANIFEST_FILE_NAME = "react-architect.json";
 export const SUPPORTED_MANIFEST_VERSION = 1;
 
-export const STYLING_OPTIONS = ["css-modules", "none"] as const;
+/**
+ * How components are styled (ADR 5). "tailwind" and "none" both mean no
+ * stylesheet per component; "tailwind" also records that Tailwind is set up.
+ */
+export const STYLING_OPTIONS = [
+  "css-modules",
+  "tailwind",
+  "plain-css",
+  "none",
+] as const;
+
+export type Styling = (typeof STYLING_OPTIONS)[number];
 export const TEST_FRAMEWORKS = ["vitest", "none"] as const;
+
+/**
+ * How strongly a structure rule is reported (ADR 11): "error" and "warning"
+ * show squiggles of that severity; "off" turns the rule off.
+ */
+export const RULE_SEVERITIES = ["warning", "error", "off"] as const;
+export type RuleSeverity = (typeof RULE_SEVERITIES)[number];
 
 export interface Manifest {
   manifestVersion: typeof SUPPORTED_MANIFEST_VERSION;
   language: "typescript";
   architecture: "feature-based";
-  styling: (typeof STYLING_OPTIONS)[number];
+  styling: Styling;
   paths: {
     components: string;
     hooks: string;
@@ -27,6 +48,13 @@ export interface Manifest {
     framework: (typeof TEST_FRAMEWORKS)[number];
     generateTests: boolean;
   };
+  /**
+   * The structure rules (plans/custom-structure.md). "entry" was called
+   * "featureInternals" and "layers" "sharedCode"; the old names still work.
+   */
+  rules: Record<RuleId, RuleSeverity>;
+  /** The project's own structure; without it, the feature-based default applies. */
+  structure?: StructureConfig;
 }
 
 export const DEFAULT_MANIFEST: Manifest = {
@@ -43,6 +71,13 @@ export const DEFAULT_MANIFEST: Manifest = {
     framework: "vitest",
     generateTests: true,
   },
+  rules: {
+    layers: "warning",
+    entry: "warning",
+    siblings: "warning",
+    placement: "warning",
+    naming: "warning",
+  },
 };
 
 export type ManifestResult =
@@ -57,9 +92,17 @@ const TOP_LEVEL_FIELDS = [
   "styling",
   "paths",
   "testing",
+  "rules",
+  "structure",
 ];
 const PATH_FIELDS = ["components", "hooks", "features"] as const;
 const TESTING_FIELDS = ["framework", "generateTests"];
+/** Old rule names, still accepted: old name -> current name. */
+const RULE_ALIASES: Record<string, RuleId> = {
+  featureInternals: "entry",
+  sharedCode: "layers",
+};
+const RULE_FIELDS = [...RULE_IDS, ...Object.keys(RULE_ALIASES)];
 
 export function parseManifest(text: string): ManifestResult {
   let value: unknown;
@@ -113,8 +156,10 @@ export function validateManifest(value: unknown): ManifestResult {
   const defaults = DEFAULT_MANIFEST;
   const paths = readSection(value, "paths", errors);
   const testing = readSection(value, "testing", errors);
+  const rules = readSection(value, "rules", errors);
   warnAboutUnknownFields(paths, PATH_FIELDS, "paths.", warnings);
   warnAboutUnknownFields(testing, TESTING_FIELDS, "testing.", warnings);
+  warnAboutUnknownFields(rules, RULE_FIELDS, "rules.", warnings);
 
   const manifest: Manifest = {
     manifestVersion: SUPPORTED_MANIFEST_VERSION,
@@ -159,11 +204,53 @@ export function validateManifest(value: unknown): ManifestResult {
         errors,
       ),
     },
+    rules: readRules(rules, errors, warnings),
   };
+  const structure = readStructure(value.structure, errors, warnings);
+  if (structure !== undefined) {
+    manifest.structure = structure;
+  }
 
   return errors.length > 0
     ? { ok: false, errors }
     : { ok: true, manifest, warnings };
+}
+
+function readRules(
+  section: JsonObject,
+  errors: string[],
+  warnings: string[],
+): Manifest["rules"] {
+  const rules = { ...DEFAULT_MANIFEST.rules };
+  for (const id of RULE_IDS) {
+    const oldName = Object.keys(RULE_ALIASES).find(
+      (alias) => RULE_ALIASES[alias] === id,
+    );
+    if (oldName !== undefined && section[oldName] !== undefined) {
+      if (section[id] !== undefined) {
+        warnings.push(
+          `"rules.${oldName}" is the old name for "rules.${id}", so it was ignored.`,
+        );
+      } else {
+        rules[id] = readChoice(
+          section,
+          `rules.${oldName}`,
+          RULE_SEVERITIES,
+          rules[id],
+          errors,
+        );
+        continue;
+      }
+    }
+    rules[id] = readChoice(
+      section,
+      `rules.${id}`,
+      RULE_SEVERITIES,
+      rules[id],
+      errors,
+    );
+  }
+  return rules;
 }
 
 /** The manifest as file contents: 2-space JSON with a final newline, matching Prettier. */

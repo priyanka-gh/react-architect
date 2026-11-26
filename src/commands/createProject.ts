@@ -9,6 +9,19 @@ import {
   type ProjectDisk,
   type RunCommand,
 } from "../core/project/createProject";
+import {
+  DEFAULT_PROJECT_CHOICES,
+  DEFAULT_TOGGLES,
+  projectFolderProblem,
+  type ProjectOptions,
+} from "../core/project/options";
+import type { Manifest } from "../core/manifest/schema";
+import { normalizeRelativePath } from "../core/paths";
+import {
+  PACKAGE_MANAGER_IDS,
+  PACKAGE_MANAGERS,
+  type PackageManagerId,
+} from "../core/project/packageManager";
 import { projectNameProblem } from "../core/project/projectName";
 import { runProcess } from "../infra/process";
 import { nodeProjectDisk } from "../infra/projectDisk";
@@ -61,30 +74,54 @@ export async function createProjectCommand(
   if (name === undefined) {
     return undefined;
   }
-  const routing = await prompts.askYesNo(
-    "Add routing with React Router?",
-    true,
-  );
-  if (routing === undefined) {
+  const styling = await prompts.askStyling();
+  if (styling === undefined) {
     return undefined;
   }
-  const install = await prompts.askYesNo(
-    "Install packages now (npm install)?",
-    true,
+  const toggles = await prompts.askToggles(DEFAULT_TOGGLES);
+  if (toggles === undefined) {
+    return undefined;
+  }
+  const available = await availablePackageManagers(run);
+  const packageManager =
+    available.length > 1 ? await prompts.askPackageManager(available) : "npm";
+  if (packageManager === undefined) {
+    return undefined;
+  }
+  const chosenFolders = await prompts.askFolders(
+    DEFAULT_PROJECT_CHOICES.paths,
+    projectFolderProblem,
   );
-  if (install === undefined) {
+  if (chosenFolders === undefined) {
+    return undefined;
+  }
+  const paths = normaliseFolders(chosenFolders);
+  if (paths === undefined) {
+    await prompts.showError("Those folder names can't be used.");
     return undefined;
   }
 
   // 2. Create it.
-  output.appendLine(`Creating ${name.trim()} in ${parent.fsPath}`);
+  const options: ProjectOptions = {
+    ...toggles,
+    name: name.trim(),
+    parentDirectory: parent.fsPath,
+    styling,
+    packageManager,
+    paths,
+  };
+  output.appendLine(
+    `Creating ${options.name} in ${options.parentDirectory}: ${JSON.stringify({ ...toggles, styling, packageManager, paths })}`,
+  );
   const result = await withCancellableProgress(
-    `Creating ${name.trim()}`,
+    `Creating ${options.name}`,
     (signal, report) =>
-      createProject(
-        { name: name.trim(), parentDirectory: parent.fsPath, routing, install },
-        { run, disk, signal, onStep: (step) => report(STEP_TITLES[step]) },
-      ),
+      createProject(options, {
+        run,
+        disk,
+        signal,
+        onStep: (step) => report(STEP_TITLES[step]),
+      }),
   );
 
   // 3. Afterwards.
@@ -101,7 +138,8 @@ export async function createProjectCommand(
       if (choice === "retry") {
         const retried = await withCancellableProgress(
           `Installing packages for ${name.trim()}`,
-          (signal) => installDependencies(result.root, { run, signal }),
+          (signal) =>
+            installDependencies(result.root, packageManager, { run, signal }),
         );
         if (retried === "cancelled") {
           return result;
@@ -134,6 +172,49 @@ export async function createProjectCommand(
     }
   }
   return result;
+}
+
+/** npm always (it comes with Node.js), plus pnpm and Yarn when they run. */
+async function availablePackageManagers(
+  run: RunCommand,
+): Promise<PackageManagerId[]> {
+  const signal = new AbortController().signal;
+  const checks = await Promise.all(
+    PACKAGE_MANAGER_IDS.map(async (id) => {
+      if (id === "npm") {
+        return true;
+      }
+      return run(PACKAGE_MANAGERS[id].command, ["--version"], {
+        cwd: os.homedir(),
+        signal,
+      }).then(
+        () => true,
+        () => false,
+      );
+    }),
+  );
+  return PACKAGE_MANAGER_IDS.filter((_, index) => checks[index]);
+}
+
+/** Normal form for each folder, or undefined if any can't be used. */
+function normaliseFolders(
+  folders: Manifest["paths"],
+): Manifest["paths"] | undefined {
+  const result: Partial<Manifest["paths"]> = {};
+  for (const key of ["components", "hooks", "features"] as const) {
+    const others = (["components", "hooks", "features"] as const)
+      .filter((other) => other !== key)
+      .map((other) => folders[other]);
+    if (projectFolderProblem(folders[key], others) !== undefined) {
+      return undefined;
+    }
+    const normalised = normalizeRelativePath(folders[key].trim());
+    if (!normalised.ok) {
+      return undefined;
+    }
+    result[key] = normalised.path;
+  }
+  return result as Manifest["paths"];
 }
 
 function defaultParentFolder(): vscode.Uri {

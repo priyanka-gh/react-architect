@@ -1,23 +1,74 @@
 import * as path from "node:path";
 import type { Manifest } from "../manifest/schema";
 import type { FileOperation } from "../plan";
+import { KIND_FOLDERS, type Kind } from "../structure/kinds";
+import { classify, structureFor } from "../structure/model";
 
 /**
- * The feature folder that contains `directory`, if any. For example, with
- * features in "src/features", "src/features/shop/components" is inside the
- * feature "src/features/shop". The features folder itself is not a feature.
+ * The unit (with the default structure, the feature) that contains
+ * `directory`, if its layer has an entry file to export from. For example,
+ * with features in "src/features", "src/features/shop/components" is inside
+ * "src/features/shop". The features folder itself is not a feature.
  */
+export function enclosingUnit(
+  directory: string,
+  manifest: Manifest,
+): { folder: string; entry: string; layer: string } | undefined {
+  const place = classify(directory, structureFor(manifest));
+  if (place?.unit === undefined || place.layer.entry === undefined) {
+    return undefined;
+  }
+  return {
+    folder: place.unit.folder,
+    entry: place.layer.entry,
+    layer: place.layer.name,
+  };
+}
+
+/** The enclosing unit's folder; see enclosingUnit. */
 export function enclosingFeature(
   directory: string,
   manifest: Manifest,
 ): string | undefined {
-  const features = manifest.paths.features;
-  const prefix = features === "." ? "" : features + "/";
-  if (!directory.startsWith(prefix)) {
-    return undefined;
-  }
-  const featureName = directory.slice(prefix.length).split("/")[0];
-  return featureName ? prefix + featureName : undefined;
+  return enclosingUnit(directory, manifest)?.folder;
+}
+
+/** The folders units can be generated in: each unit layer's folder, features first. */
+export function unitLayerFolders(manifest: Manifest): string[] {
+  const structure = structureFor(manifest);
+  return structure.layers
+    .slice()
+    .sort(
+      (a, b) => Number(b.name === "features") - Number(a.name === "features"),
+    )
+    .flatMap((layer) =>
+      layer.parsedPaths.filter((p) => p.units).map((p) => p.base || "."),
+    );
+}
+
+/**
+ * With a custom structure, the layer folders named for a kind of code, such
+ * as src/components and src/ui for components. Empty without a structure,
+ * so the manifest's paths apply as before.
+ */
+export function kindLayerFolders(manifest: Manifest, kind: Kind): string[] {
+  if (manifest.structure === undefined) return [];
+  return structureFor(manifest).layers.flatMap((layer) =>
+    layer.parsedPaths
+      .filter(
+        (p) =>
+          !p.units && KIND_FOLDERS[kind].includes(path.posix.basename(p.base)),
+      )
+      .map((p) => p.base),
+  );
+}
+
+/** The unit layer whose units go directly in `folder`, if any. */
+export function unitLayerAt(folder: string, manifest: Manifest) {
+  const base = folder === "." ? "" : folder;
+  return structureFor(manifest).layers.find((layer) =>
+    layer.parsedPaths.some((p) => p.units && p.base === base),
+  );
 }
 
 /**
@@ -28,12 +79,13 @@ export function featureExport(
   featureFolder: string,
   file: string,
   exportedName: string,
+  entry = "index.ts",
 ): FileOperation {
   const relative = path.posix.relative(featureFolder, file);
   const specifier = relative.startsWith(".") ? relative : "./" + relative;
   return {
     kind: "ensureLine",
-    path: `${featureFolder}/index.ts`,
+    path: `${featureFolder}/${entry}`,
     line: `export { ${exportedName} } from "${specifier}";`,
   };
 }

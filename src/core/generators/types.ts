@@ -30,6 +30,11 @@ export interface Generator {
   displayName(name: NameForms): string;
   /** Where to generate when the user didn't pick a folder. */
   defaultDirectory(manifest: Manifest): string;
+  /**
+   * Other suitable folders, when the structure has several (such as each
+   * unit layer for features). The user is asked when there's more than one.
+   */
+  directoryChoices?(manifest: Manifest): string[];
   /** Whether output generated inside a feature can be exported from its index.ts. */
   canExportFromFeature: boolean;
   generate(input: GenerateInput, manifest: Manifest): GeneratedFiles;

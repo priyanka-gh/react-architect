@@ -24,8 +24,8 @@
       "default": "feature-based"
     },
     "styling": {
-      "description": "\"css-modules\" generates a .module.css file with each component. \"none\" generates no stylesheet.",
-      "enum": ["css-modules", "none"],
+      "description": "How components are styled. \"css-modules\": a .module.css file with each component. \"plain-css\": a .css file with an ordinary class name. \"tailwind\": Tailwind utility classes, no stylesheet. \"none\": no stylesheet.",
+      "enum": ["css-modules", "tailwind", "plain-css", "none"],
       "default": "css-modules"
     },
     "paths": {
@@ -69,6 +69,141 @@
           "description": "Default answer when asked whether to include a test.",
           "type": "boolean",
           "default": true
+        }
+      }
+    },
+    "rules": {
+      "description": "How strongly each structure rule is reported as you type: \"warning\", \"error\", or \"off\".",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "layers": {
+          "enum": ["warning", "error", "off"],
+          "default": "warning",
+          "description": "A layer may only import the layers in its \"mayImport\". With the default structure: shared components and hooks must not import from features."
+        },
+        "entry": {
+          "enum": ["warning", "error", "off"],
+          "default": "warning",
+          "description": "Code outside a unit (such as a feature) may only import its entry file (index.ts), never a file inside it."
+        },
+        "siblings": {
+          "enum": ["warning", "error", "off"],
+          "default": "warning",
+          "description": "Units of a layer whose \"siblings\" is \"none\" may not use each other."
+        },
+        "placement": {
+          "enum": ["warning", "error", "off"],
+          "default": "warning",
+          "description": "Files in the wrong place: outside every layer (when structure.unlisted is \"reported\"), or in a unit but outside its unitTemplate."
+        },
+        "naming": {
+          "enum": ["warning", "error", "off"],
+          "default": "warning",
+          "description": "File names that don't match structure.naming."
+        },
+        "featureInternals": {
+          "enum": ["warning", "error", "off"],
+          "deprecated": true,
+          "description": "Old name for \"entry\"."
+        },
+        "sharedCode": {
+          "enum": ["warning", "error", "off"],
+          "deprecated": true,
+          "description": "Old name for \"layers\"."
+        }
+      }
+    },
+    "structure": {
+      "description": "The project's own structure. Without it, React Architect uses the feature-based structure: each folder in paths.features is a feature with an index.ts, and shared components and hooks may not use features.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layers"],
+      "properties": {
+        "layers": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The parts of the project and which may import which.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "paths"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$",
+                "description": "A lower-case name, such as \"features\" or \"shared\"."
+              },
+              "paths": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/)(?!.*[\\\\:])(?!(.*/)?\\.\\.(/|$))(?!.*\\*.*/)(?!.*\\*.+$)"
+                },
+                "description": "Folders in this layer, relative to this file. End a path in \"/*\" to make each folder inside it a unit, such as each feature in \"src/features/*\"."
+              },
+              "mayImport": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Names of the other layers this layer may import."
+              },
+              "entry": {
+                "type": "string",
+                "pattern": "^[^/\\\\]+\\.[a-z]+$",
+                "description": "Each unit's front door, such as \"index.ts\". Code outside a unit may only import this file."
+              },
+              "siblings": {
+                "enum": ["entry", "none", "any"],
+                "description": "How units of this layer may use each other: \"entry\" only through their entry file, \"none\" not at all, \"any\" freely."
+              },
+              "unitTemplate": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[^/\\\\*:]+/?$"
+                },
+                "description": "What every unit of this layer contains: folders end in \"/\", such as [\"components/\", \"hooks/\", \"index.ts\"]. Generate Feature creates units like this, and files elsewhere in a unit are reported."
+              }
+            }
+          }
+        },
+        "ignore": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Files the rules don't apply to, as glob patterns, such as \"**/*.test.*\"."
+        },
+        "unlisted": {
+          "enum": ["allowed", "reported"],
+          "default": "allowed",
+          "description": "Whether source files outside every layer are reported as placement problems."
+        },
+        "naming": {
+          "type": "array",
+          "default": [],
+          "description": "File name patterns.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["files", "pattern"],
+            "properties": {
+              "files": {
+                "type": "string",
+                "description": "Glob for the files this applies to, such as \"**/hooks/*.ts\"."
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Glob the name before its first dot must match, such as \"use[A-Z]*\"."
+              }
+            }
+          }
         }
       }
     }

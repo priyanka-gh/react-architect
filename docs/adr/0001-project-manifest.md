@@ -14,7 +14,7 @@ Each React project has a `react-architect.json` file next to its `package.json`.
 - **Creation:** the project generator writes the file.
 - **Missing manifest:** suggest settings from the project (`core/manifest/infer.ts`) and show each one with its reason before writing anything. Generating offers this on first use, and **Set Up Existing Project** does it on its own and opens the file for review. The rules:
   - **Paths:** the first existing folder from a short list of common layouts (for example `src/components`, `src/shared/components`, `src/ui`; `src/features`, `src/modules`, `src/domains`). Otherwise the default.
-  - **Styling:** `none` when package.json lists another styling library (Tailwind, styled-components, Emotion, vanilla-extract, Stitches). Otherwise `css-modules`.
+  - **Styling:** `tailwind` when package.json lists `tailwindcss`; `none` when it lists another styling library (styled-components, Emotion, vanilla-extract, Stitches). Otherwise `css-modules`.
   - **Tests:** `vitest` only when both `vitest` and `@testing-library/react` are installed, because generated tests need both. Jest projects get `none`, since generated tests are Vitest tests.
   - **Warnings,** without blocking: no `react` dependency, or no TypeScript (neither the dependency nor `tsconfig.json`), because generated files are `.tsx`.
   - The search for existing `.module.css` files skips `node_modules`, build output and `.git`, and stops after 500 folders, so large repositories stay fast.
@@ -28,7 +28,7 @@ Version 1 of the schema (the real file is plain JSON, so it has no comments or t
   "manifestVersion": 1,
   "language": "typescript",          // only value in v1
   "architecture": "feature-based",   // only value in v1
-  "styling": "css-modules",          // "css-modules" | "none"
+  "styling": "css-modules",          // "css-modules" | "tailwind" | "plain-css" | "none"
   "paths": {
     "components": "src/components",
     "hooks": "src/hooks",
@@ -37,7 +37,13 @@ Version 1 of the schema (the real file is plain JSON, so it has no comments or t
   "testing": {
     "framework": "vitest",           // "vitest" | "none"
     "generateTests": true            // default answer to "Include a test?"
-  }
+  },
+  "rules": {                         // structure rules (ADR 11, 12)
+    "layers": "warning",             // "warning" | "error" | "off"
+    "entry": "warning",
+    "siblings": "warning"
+  },
+  "structure": { "layers": [ ... ] } // optional (ADR 12)
 }
 ```
 

@@ -32,6 +32,7 @@ describe("JSON Schema and validateManifest agree", () => {
       styling: "none",
       paths: { components: "a", hooks: "b", features: "c" },
       testing: { framework: "none", generateTests: false },
+      rules: { featureInternals: "error", sharedCode: "off" },
     },
     withPath("./src/components/"),
     withPath("..foo/components"),
@@ -46,7 +47,7 @@ describe("JSON Schema and validateManifest agree", () => {
   it.each([
     {},
     { manifestVersion: 2 },
-    { manifestVersion: 1, styling: "tailwind" },
+    { manifestVersion: 1, styling: "sass" },
     { manifestVersion: 1, testing: { generateTests: "yes" } },
     { manifestVersion: 1, paths: "src" },
     withPath(""),
@@ -55,6 +56,8 @@ describe("JSON Schema and validateManifest agree", () => {
     withPath("src\\components"),
     withPath("../components"),
     withPath("src/../../components"),
+    { manifestVersion: 1, rules: { featureInternals: "loud" } },
+    { manifestVersion: 1, rules: "off" },
   ])("both reject %j", (manifest) => {
     expect(schemaAccepts(manifest)).toBe(false);
     expect(validateManifest(manifest).ok).toBe(false);
@@ -86,7 +89,9 @@ describe("JSON Schema and validateManifest agree", () => {
     >;
     const defaults = Object.fromEntries(
       Object.entries(properties)
-        .filter(([name]) => name !== "$schema")
+        // structure is optional with no default: without it, the default
+        // structure comes from "paths" (see structure/model.ts).
+        .filter(([name]) => name !== "$schema" && name !== "structure")
         .map(([name, property]) => [
           name,
           property.properties

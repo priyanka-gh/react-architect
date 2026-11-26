@@ -8,7 +8,8 @@
 src/
 ├── extension.ts   # registers commands only
 ├── commands/      # VS Code UI: prompts → input object → core → show result
-├── core/          # pure logic: naming, manifest, plans, generators, templates, project steps
+├── editor/        # long-lived VS Code integrations: project index, squiggles, quick fix, Project Map (ADR 11)
+├── core/          # pure logic: naming, manifest, plans, generators, templates, project steps, code reading
 └── infra/         # side effects: processes, package manager, writers, output channel
 ```
 
@@ -19,7 +20,7 @@ src/
 ## VS Code integration
 
 - **`engines.vscode`:** `^1.100.0`. Integration tests run on both that version and the current stable release. `@types/vscode` must not be newer than the engine floor.
-- **Activation:** there are no `activationEvents`. Contributed commands activate the extension automatically, which VS Code has done since 1.74.
+- **Activation:** contributed commands and views activate the extension automatically, which VS Code has done since 1.74. The one `activationEvents` entry, `workspaceContains:**/react-architect.json`, starts the structure rules when a project is opened (ADR 11).
 - **Contributions:**
   - commands in the command palette
   - an `explorer/context` submenu, "React Architect", containing Generate Component, Generate Hook and Generate Feature (`when: explorerResourceIsFolder`)

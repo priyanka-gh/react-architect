@@ -133,14 +133,25 @@ describe("inferManifest", () => {
     expect(result.notes.join(" ")).toContain(reason);
   });
 
-  it("drops the stylesheet when another styling library is used", async () => {
+  it("records Tailwind when the project uses it", async () => {
     const result = await inferManifest(
       root,
       project({ "package.json": packageJson({ tailwindcss: "^4" }) }),
     );
+    expect(result.manifest.styling).toBe("tailwind");
+    expect(result.notes).toContain(
+      "Components get no stylesheet, because the project uses Tailwind.",
+    );
+  });
+
+  it("drops the stylesheet when another styling library is used", async () => {
+    const result = await inferManifest(
+      root,
+      project({ "package.json": packageJson({ "styled-components": "^6" }) }),
+    );
     expect(result.manifest.styling).toBe("none");
     expect(result.notes).toContain(
-      "Components get no stylesheet, because the project uses tailwindcss.",
+      "Components get no stylesheet, because the project uses styled-components.",
     );
   });
 

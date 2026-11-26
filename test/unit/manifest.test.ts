@@ -35,11 +35,62 @@ describe("validateManifest", () => {
         features: "app/modules",
       },
       testing: { framework: "none", generateTests: false },
+      rules: {
+        layers: "off",
+        entry: "error",
+        siblings: "warning",
+        placement: "off",
+        naming: "error",
+      },
     };
     expect(validateManifest(manifest)).toEqual({
       ok: true,
       manifest,
       warnings: [],
+    });
+  });
+
+  it("accepts the old rule names", () => {
+    expect(
+      validateManifest({
+        manifestVersion: 1,
+        rules: { featureInternals: "error", sharedCode: "off" },
+      }),
+    ).toMatchObject({
+      ok: true,
+      manifest: {
+        rules: { entry: "error", layers: "off", siblings: "warning" },
+      },
+      warnings: [],
+    });
+    expect(
+      validateManifest({
+        manifestVersion: 1,
+        rules: { featureInternals: "error", entry: "off" },
+      }),
+    ).toMatchObject({
+      ok: true,
+      manifest: { rules: { entry: "off" } },
+      warnings: [
+        '"rules.featureInternals" is the old name for "rules.entry", so it was ignored.',
+      ],
+    });
+  });
+
+  it("checks the structure rule settings", () => {
+    expect(
+      validateManifest({ manifestVersion: 1, rules: { sharedCode: "loud" } }),
+    ).toEqual({
+      ok: false,
+      errors: [
+        '"rules.sharedCode" must be one of "warning", "error", "off", not "loud".',
+      ],
+    });
+    expect(
+      validateManifest({ manifestVersion: 1, rules: { other: "off" } }),
+    ).toMatchObject({
+      ok: true,
+      warnings: ['Unknown setting "rules.other" was ignored.'],
     });
   });
 
@@ -121,13 +172,13 @@ describe("validateManifest", () => {
       errorsFor({
         manifestVersion: 1,
         language: "javascript",
-        styling: "tailwind",
+        styling: "sass",
         paths: { components: 42, hooks: "../hooks", features: "src\\features" },
         testing: { framework: "jest", generateTests: "yes" },
       }),
     ).toEqual([
       '"language" must be "typescript", not "javascript".',
-      '"styling" must be one of "css-modules", "none", not "tailwind".',
+      '"styling" must be one of "css-modules", "tailwind", "plain-css", "none", not "sass".',
       '"paths.components" must be a path such as "src/components", not 42.',
       '"paths.hooks" must not contain "..".',
       '"paths.features" must use forward slashes (/).',

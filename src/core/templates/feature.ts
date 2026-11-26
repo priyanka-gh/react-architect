@@ -19,9 +19,13 @@ export function featureTypesSource({ pascal }: FeatureTemplate): string {
 export function featureServiceSource({
   pascal,
   kebab,
-}: FeatureTemplate): string {
+  typesFrom = "../types",
+}: FeatureTemplate & {
+  /** Where the service imports the feature's types from. */
+  typesFrom?: string;
+}): string {
   return code`
-    import type { ${pascal}Data } from "../types";
+    import type { ${pascal}Data } from "${typesFrom}";
 
     export async function fetch${pascal}() {
       const response = await fetch("/api/${kebab}");

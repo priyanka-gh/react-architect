@@ -41,7 +41,6 @@ const PATH_LABELS: Record<keyof Manifest["paths"], string> = {
 
 /** Styling libraries that make a .module.css per component the wrong default. */
 const OTHER_STYLING = [
-  "tailwindcss",
   "styled-components",
   "@emotion/react",
   "@emotion/styled",
@@ -88,12 +87,20 @@ export async function inferManifest(
   // Styling.
   let styling: Manifest["styling"] = "css-modules";
   const otherStyling = OTHER_STYLING.find((name) => packages.has(name));
-  if (otherStyling !== undefined) {
+  if (packages.has("tailwindcss")) {
+    styling = "tailwind";
+    notes.push(
+      "Components get no stylesheet, because the project uses Tailwind.",
+    );
+  } else if (otherStyling !== undefined) {
     styling = "none";
     notes.push(
       `Components get no stylesheet, because the project uses ${otherStyling}.`,
     );
-  } else if (await containsCssModule(path.join(root, "src"), reader)) {
+  } else if (
+    (await isDirectory(root, "src", reader)) &&
+    (await containsCssModule(path.join(root, "src"), reader))
+  ) {
     notes.push(
       "Components get a CSS Module, like the existing .module.css files.",
     );
@@ -172,19 +179,27 @@ async function readDependencies(
   }
 }
 
+/**
+ * Walks down one folder at a time, so it only ever lists folders that exist
+ * (listing a missing one makes VS Code log an error).
+ */
 async function isDirectory(
   root: string,
   relative: string,
   reader: ProjectReader,
 ): Promise<boolean> {
-  const parent = path.dirname(relative);
-  const entries = await reader.readDirectory(
-    parent === "." ? root : path.join(root, ...parent.split("/")),
-  );
-  const name = path.posix.basename(relative);
-  return (
-    entries?.some((entry) => entry.name === name && entry.isDirectory) ?? false
-  );
+  let folder = root;
+  for (const segment of relative.split("/")) {
+    const entries = await reader.readDirectory(folder);
+    const found = entries?.some(
+      (entry) => entry.name === segment && entry.isDirectory,
+    );
+    if (!found) {
+      return false;
+    }
+    folder = path.join(folder, segment);
+  }
+  return true;
 }
 
 /** Breadth-first, skipping build output and dependencies, and stopping after a bounded number of folders. */

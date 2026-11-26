@@ -18,6 +18,12 @@ jobs:
           node-version: lts/*
           cache: npm
       - run: npm ci
+      - run: npm install --global pnpm@12.22.0
+      - run: yarn --version || npm install --global yarn@1.22.22
       - run: npm run test:e2e
         env:
           CREATE_VITE_VERSION: latest
+          GIT_AUTHOR_NAME: React Architect CI
+          GIT_AUTHOR_EMAIL: ci@example.invalid
+          GIT_COMMITTER_NAME: React Architect CI
+          GIT_COMMITTER_EMAIL: ci@example.invalid

@@ -135,7 +135,11 @@ suite("Generate commands", () => {
     ]);
     assert.strictEqual(
       app.read("src/components/UserCard/UserCard.tsx"),
-      componentSource({ name: "UserCard", withStyles: true }),
+      componentSource({
+        name: "UserCard",
+        kebab: "user-card",
+        styling: "css-modules",
+      }),
     );
     assert.ok(app.exists("src/components/UserCard/UserCard.module.css"));
     assert.ok(app.exists("src/components/UserCard/UserCard.test.tsx"));
@@ -296,7 +300,7 @@ suite("Generate commands", () => {
 
     assert.strictEqual(
       app.read("src/components/Card/Card.tsx"),
-      componentSource({ name: "Card", withStyles: true }),
+      componentSource({ name: "Card", kebab: "card", styling: "css-modules" }),
     );
     assert.strictEqual(
       previewLines()[0],

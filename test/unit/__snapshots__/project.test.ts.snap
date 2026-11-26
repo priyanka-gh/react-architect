@@ -1,17 +1,21 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`projectOverlay > lists the files it creates 1`] = `
+exports[`projectOverlay > lists the files for the recommended setup 1`] = `
 [
   "react-architect.json",
   "README.md",
   ".env.example",
+  ".gitignore",
   ".prettierrc",
   ".prettierignore",
   "eslint.config.js",
   "vite.config.ts",
+  "tsconfig.app.json",
   "src/main.tsx",
   "src/app/App.tsx",
   "src/app/App.test.tsx",
+  "src/test/setup.ts",
+  "src/styles/global.css",
   "src/app/routes.tsx",
   "src/components/layout/AppLayout/AppLayout.tsx",
   "src/components/layout/AppLayout/AppLayout.module.css",
@@ -24,7 +28,5 @@ exports[`projectOverlay > lists the files it creates 1`] = `
   "src/features/home/services/homeApi.ts",
   "src/features/home/types.ts",
   "src/features/home/index.ts",
-  "src/styles/global.css",
-  "src/test/setup.ts",
 ]
 `;

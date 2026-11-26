@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import * as path from "node:path";
-import { appendMissingLines, type FilePlan } from "../core/plan";
+import { appendMissingLines, applyChanges, type FilePlan } from "../core/plan";
 import type { ProjectDisk } from "../core/project/createProject";
 
 /**
@@ -44,6 +44,14 @@ export async function writePlanToDisk(plan: FilePlan): Promise<void> {
       await writeFile(file, operation.content, {
         flag: operation.overwrite === true ? "w" : "wx",
       });
+    } else if (operation.kind === "edit") {
+      const existing = await readFile(file, "utf8");
+      if (existing !== operation.expectedText) {
+        throw new Error(
+          `${operation.path} changed while it was being updated.`,
+        );
+      }
+      await writeFile(file, applyChanges(existing, operation.changes));
     } else {
       const existing = await readFile(file, "utf8").catch((error: unknown) => {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") {

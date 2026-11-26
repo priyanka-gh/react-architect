@@ -22,6 +22,8 @@ jobs:
           node-version: lts/*
           cache: npm
       - run: npm ci
+      - run: npm install --global pnpm@12.22.0
+      - run: yarn --version || npm install --global yarn@1.22.22
 
       - name: Check that the tag matches package.json
         run: |
@@ -37,6 +39,11 @@ jobs:
       - run: npm run test:unit
       - run: xvfb-run -a npm run test:integration
       - run: npm run test:e2e
+        env:
+          GIT_AUTHOR_NAME: React Architect CI
+          GIT_AUTHOR_EMAIL: ci@example.invalid
+          GIT_COMMITTER_NAME: React Architect CI
+          GIT_COMMITTER_EMAIL: ci@example.invalid
 
       - run: npm run package:vsix
       - name: Publish to the VS Code Marketplace

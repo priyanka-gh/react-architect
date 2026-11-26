@@ -1,0 +1,7 @@
+# Check every text file out with LF line endings, on every OS. Without this,
+# Git on Windows converts to CRLF, and Prettier (which expects LF) flags every
+# file in `npm run format:check`.
+* text=auto eol=lf
+
+*.png binary
+*.vsix binary

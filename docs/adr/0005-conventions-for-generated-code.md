@@ -38,7 +38,7 @@ A feature gets a single `types.ts` until it needs more than one types file. Its 
 
 Generated tests use only Vitest and React Testing Library (`expect(...).toBeTruthy()` rather than jest-dom matchers), so they also run in existing projects that don't have jest-dom set up.
 
-The stylesheet is generated only when `styling` is `css-modules`. A test is generated only when `testing.framework` isn't `none` and the user accepts the prompt, which defaults to `testing.generateTests`.
+The stylesheet depends on `styling` ([ADR 10](0010-project-creation-choices.md)): `UserCard.module.css` for `css-modules`, `UserCard.css` with a `.user-card` class for `plain-css`, and none for `tailwind` or `none`. A test is generated only when `testing.framework` isn't `none` and the user accepts the prompt, which defaults to `testing.generateTests`.
 
 ## Code style
 

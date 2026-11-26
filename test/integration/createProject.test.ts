@@ -9,14 +9,20 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { createProjectCommand } from "../../src/commands/createProject";
 import type { ProjectPrompts } from "../../src/commands/prompts";
+import type { Manifest, Styling } from "../../src/core/manifest/schema";
 import type { RunCommand } from "../../src/core/project/createProject";
+import type { ProjectToggles } from "../../src/core/project/options";
+import type { PackageManagerId } from "../../src/core/project/packageManager";
 
 interface Script {
   name: string;
-  routing?: boolean;
-  install?: boolean;
+  styling?: Styling;
+  toggles?: Partial<ProjectToggles>;
+  /** Answer to the package manager question, if it's asked. */
+  packageManager?: PackageManagerId;
+  folders?: Manifest["paths"];
   deleteOnFailure?: boolean;
-  /** Answers to "npm install failed", in order. */
+  /** Answers to "install failed", in order. */
   installFailed?: ("retry" | "open" | "output" | undefined)[];
 }
 
@@ -30,11 +36,29 @@ function scripted(parent: string, script: Script) {
       assert.strictEqual(await validate(script.name), undefined);
       return script.name;
     },
-    askYesNo: async (question) => {
-      asked.push(question);
-      return question.startsWith("Add routing")
-        ? (script.routing ?? true)
-        : (script.install ?? true);
+    askStyling: async () => {
+      asked.push("styling");
+      return script.styling ?? "css-modules";
+    },
+    askToggles: async (defaults) => {
+      asked.push("options");
+      // No git and no install by default here: they'd need real programs.
+      return { ...defaults, git: false, install: false, ...script.toggles };
+    },
+    askPackageManager: async (available) => {
+      asked.push(`package manager: ${available.join(", ")}`);
+      return script.packageManager ?? "npm";
+    },
+    askFolders: async (defaults, validate) => {
+      asked.push("folders");
+      const folders = script.folders ?? defaults;
+      for (const key of ["components", "hooks", "features"] as const) {
+        const others = Object.entries(folders)
+          .filter(([other]) => other !== key)
+          .map(([, value]) => value);
+        assert.strictEqual(validate(folders[key], others), undefined);
+      }
+      return folders;
     },
     // Never open the folder: that would reload the test window.
     projectCreated: async () => {
@@ -58,14 +82,25 @@ function scripted(parent: string, script: Script) {
   return { prompts, asked };
 }
 
-/** Pretends to be node, create-vite and npm. */
+/** Pretends to be node, create-vite and the package managers. pnpm and Yarn are "not installed" unless listed. */
 function fakePrograms(
-  options: { scaffoldFails?: boolean; installFailures?: number } = {},
+  options: {
+    scaffoldFails?: boolean;
+    installFailures?: number;
+    installed?: PackageManagerId[];
+  } = {},
 ) {
   let installFailures = options.installFailures ?? 0;
+  const installed = new Set(options.installed ?? []);
   const run: RunCommand = async (command, args, { cwd }) => {
     if (command === "node") {
       return { output: "v24.15.0\n" };
+    }
+    if ((command === "pnpm" || command === "yarn") && args[0] === "--version") {
+      if (!installed.has(command)) {
+        throw new Error(`"${command}" wasn't found.`);
+      }
+      return { output: "1.0.0\n" };
     }
     if (args[0] === "exec") {
       const root = path.join(cwd, args[5] ?? "");
@@ -97,11 +132,8 @@ suite("Create React Project", () => {
     fs.rmSync(parent, { recursive: true, force: true });
   });
 
-  test("creates the project and offers to open it", async () => {
-    const { prompts, asked } = scripted(parent, {
-      name: "my-app",
-      install: false,
-    });
+  test("asks its questions and creates the project", async () => {
+    const { prompts, asked } = scripted(parent, { name: "my-app" });
 
     const result = await createProjectCommand({
       output,
@@ -110,10 +142,12 @@ suite("Create React Project", () => {
     });
 
     assert.strictEqual(result?.status, "created");
+    // Only npm is installed, so the package manager question is skipped.
     assert.deepStrictEqual(asked, [
       "name",
-      "Add routing with React Router?",
-      "Install packages now (npm install)?",
+      "styling",
+      "options",
+      "folders",
       "created",
     ]);
     const root = path.join(parent, "my-app");
@@ -122,6 +156,68 @@ suite("Create React Project", () => {
     assert.ok(
       !fs.existsSync(path.join(root, "src/App.tsx")),
       "Vite's App.tsx was replaced",
+    );
+  });
+
+  test("leaves out tests and CSS files when asked to", async () => {
+    const { prompts } = scripted(parent, {
+      name: "lean",
+      styling: "none",
+      toggles: { tests: false, routing: false },
+    });
+
+    await createProjectCommand({ output, prompts, run: fakePrograms() });
+
+    const files = fs
+      .readdirSync(path.join(parent, "lean"), { recursive: true })
+      .map(String);
+    assert.deepStrictEqual(
+      files.filter((file) => /\.test\.|\.css$/.test(file)),
+      [],
+    );
+  });
+
+  test("uses the chosen folders and Tailwind", async () => {
+    const folders = {
+      components: "src/ui",
+      hooks: "src/use",
+      features: "src/modules",
+    };
+    const { prompts } = scripted(parent, {
+      name: "custom",
+      styling: "tailwind",
+      folders,
+    });
+
+    await createProjectCommand({ output, prompts, run: fakePrograms() });
+
+    const root = path.join(parent, "custom");
+    assert.ok(fs.existsSync(path.join(root, "src/modules/home/index.ts")));
+    assert.ok(
+      fs.existsSync(path.join(root, "src/ui/layout/AppLayout/AppLayout.tsx")),
+    );
+    assert.match(
+      fs.readFileSync(path.join(root, "vite.config.ts"), "utf8"),
+      /tailwindcss\(\)/,
+    );
+  });
+
+  test("asks for the package manager only when there's a choice", async () => {
+    const { prompts, asked } = scripted(parent, {
+      name: "pnpm-app",
+      packageManager: "pnpm",
+    });
+
+    await createProjectCommand({
+      output,
+      prompts,
+      run: fakePrograms({ installed: ["pnpm"] }),
+    });
+
+    assert.ok(asked.includes("package manager: npm, pnpm"));
+    assert.match(
+      fs.readFileSync(path.join(parent, "pnpm-app", "README.md"), "utf8"),
+      /`pnpm dev`/,
     );
   });
 
@@ -180,6 +276,7 @@ suite("Create React Project", () => {
   test("retries a failed install when asked", async () => {
     const { prompts, asked } = scripted(parent, {
       name: "flaky",
+      toggles: { install: true },
       installFailed: ["retry"],
     });
 

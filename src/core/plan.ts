@@ -7,6 +7,13 @@ import { normalizeRelativePath } from "./paths";
  * See ADR 4.
  */
 
+/** Replaces `start`..`end` (offsets into the file's text) with `text`. */
+export interface TextChange {
+  start: number;
+  end: number;
+  text: string;
+}
+
 export type FileOperation =
   | {
       kind: "create";
@@ -21,6 +28,16 @@ export type FileOperation =
       kind: "ensureLine";
       path: string;
       line: string;
+    }
+  | {
+      /**
+       * Change parts of an existing file. `expectedText` is what the changes
+       * were worked out from; the writer refuses if the file no longer has it.
+       */
+      kind: "edit";
+      path: string;
+      expectedText: string;
+      changes: TextChange[];
     };
 
 export interface FilePlan {
@@ -71,10 +88,36 @@ function operationProblem(operation: FileOperation): string | undefined {
   if (result.path !== operation.path) {
     return `"${operation.path}" must be written as "${result.path}".`;
   }
+  if (operation.kind === "edit" && overlaps(operation.changes)) {
+    return `The changes to "${operation.path}" overlap.`;
+  }
   if (operation.kind === "ensureLine" && /[\r\n]/.test(operation.line)) {
     return `The line added to "${operation.path}" must be a single line.`;
   }
   return undefined;
+}
+
+function overlaps(changes: readonly TextChange[]): boolean {
+  const sorted = [...changes].sort((a, b) => a.start - b.start);
+  return sorted.some(
+    (change, index) =>
+      change.start > change.end ||
+      (index > 0 && change.start < sorted[index - 1]!.end),
+  );
+}
+
+/** Applies changes (in any order, not overlapping) to text. */
+export function applyChanges(
+  text: string,
+  changes: readonly TextChange[],
+): string {
+  return [...changes]
+    .sort((a, b) => b.start - a.start)
+    .reduce(
+      (result, change) =>
+        result.slice(0, change.start) + change.text + result.slice(change.end),
+      text,
+    );
 }
 
 /** The same file twice is only allowed when every operation adds a line to it. */
@@ -86,7 +129,7 @@ function duplicateProblems(operations: FileOperation[]): string[] {
 
   const problems: string[] = [];
   for (const [filePath, kinds] of kindsByPath) {
-    if (kinds.length > 1 && kinds.includes("create")) {
+    if (kinds.length > 1 && kinds.some((kind) => kind !== "ensureLine")) {
       problems.push(`"${filePath}" appears more than once in the plan.`);
     }
   }

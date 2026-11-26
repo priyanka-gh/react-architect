@@ -65,6 +65,34 @@ describe("component generator", () => {
     expect(result.operations[0]).toMatchSnapshot();
   });
 
+  it.each([
+    ["css-modules", ["UserCard.tsx", "UserCard.module.css"]],
+    ["plain-css", ["UserCard.tsx", "UserCard.css"]],
+    ["tailwind", ["UserCard.tsx"]],
+    ["none", ["UserCard.tsx"]],
+  ] as const)("with %s styling, creates %j", (styling, files) => {
+    const result = component.generate(
+      input({ name: name("user card"), includeTests: false }),
+      { ...DEFAULT_MANIFEST, styling },
+    );
+    expect(paths(result.operations)).toEqual(
+      files.map((file) => `src/components/UserCard/${file}`),
+    );
+  });
+
+  it("gives plain CSS components a class named after them", () => {
+    const result = component.generate(
+      input({ name: name("user card"), includeTests: false }),
+      { ...DEFAULT_MANIFEST, styling: "plain-css" },
+    );
+    const [source, stylesheet] = result.operations.map((o) =>
+      o.kind === "create" ? o.content : "",
+    );
+    expect(source).toContain('import "./UserCard.css";');
+    expect(source).toContain('["user-card", className]');
+    expect(stylesheet).toContain(".user-card {");
+  });
+
   it("skips the test when not wanted, or when the project has no test framework", () => {
     const noTests = component.generate(
       input({ name: name("card"), includeTests: false }),
@@ -207,9 +235,15 @@ describe("every generator", () => {
     expect(paths(result.operations)).toContain(result.mainFile);
   });
 
-  it.each(cases)(
-    "%s %j: output is already formatted by Prettier",
-    async (id, raw) => {
+  const stylingCases = cases.flatMap(([id, raw]) =>
+    (["css-modules", "plain-css", "tailwind", "none"] as const).map(
+      (styling) => [id, raw, styling] as const,
+    ),
+  );
+
+  it.each(stylingCases)(
+    "%s %j with %s styling: output is already formatted by Prettier",
+    async (id, raw, styling) => {
       const generator = getGenerator(id);
       const result = generator.generate(
         input({
@@ -217,13 +251,15 @@ describe("every generator", () => {
           directory: "src/features/shop",
           exportFromFeature: true,
         }),
-        DEFAULT_MANIFEST,
+        { ...DEFAULT_MANIFEST, styling },
       );
       for (const operation of result.operations) {
         const content =
           operation.kind === "create"
             ? operation.content
-            : operation.line + "\n";
+            : operation.kind === "ensureLine"
+              ? operation.line + "\n"
+              : "";
         const formatted = await prettier.format(content, {
           filepath: operation.path,
         });

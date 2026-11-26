@@ -3,7 +3,10 @@ import { hookName } from "../naming";
 import type { FileOperation } from "../plan";
 import { code } from "../templates/code";
 import { featureServiceSource, featureTypesSource } from "../templates/feature";
+import type { Kind } from "../structure/kinds";
+import { templateFolderFor } from "../structure/kinds";
 import { componentFiles } from "./component";
+import { unitLayerAt, unitLayerFolders } from "./featureIndex";
 import { hookFiles } from "./hook";
 import type { Generator } from "./types";
 
@@ -22,7 +25,9 @@ export const featureGenerator: Generator = {
   label: "Feature",
   namePlaceholder: "For example: user profile",
   displayName: (name) => name.kebab,
-  defaultDirectory: (manifest) => manifest.paths.features,
+  defaultDirectory: (manifest) =>
+    unitLayerFolders(manifest)[0] ?? manifest.paths.features,
+  directoryChoices: (manifest) => unitLayerFolders(manifest),
   canExportFromFeature: false,
 
   generate(input, manifest) {
@@ -30,15 +35,42 @@ export const featureGenerator: Generator = {
     const folder = path.posix.join(input.directory, kebab);
     const hook = hookName(input.name);
 
+    // With a custom structure, follow the unit template (plans/custom-structure.md, Phase 5).
+    const layer = unitLayerAt(input.directory, manifest);
+    const template = layer?.unitTemplate;
+    const entry = layer?.entry ?? "index.ts";
+    const segment = (kind: Kind, fallback: string) =>
+      (template && templateFolderFor(kind, template)) ?? fallback;
+    const components = segment("component", "components");
+    const hooks = segment("hook", "hooks");
+    const services = segment("service", "services");
+    const typesFolder =
+      template === undefined || template.includes("types.ts")
+        ? undefined
+        : templateFolderFor("types", template);
+    // types.ts, types/index.ts or model/types.ts: imported as "./types" or "./model/types".
+    const typesFile =
+      typesFolder === undefined
+        ? "types.ts"
+        : typesFolder === "types"
+          ? "types/index.ts"
+          : `${typesFolder}/types.ts`;
+    const typesModule =
+      typesFile === "types/index.ts" ? "types" : typesFile.replace(/\.ts$/, "");
+    const relative = (from: string, to: string) => {
+      const result = path.posix.relative(from, to);
+      return result.startsWith(".") ? result : "./" + result;
+    };
+
     const component = componentFiles(
-      pascal,
-      `${folder}/components`,
+      input.name,
+      `${folder}/${components}`,
       manifest,
       input.includeTests,
     );
     const hookResult = hookFiles(
       hook,
-      `${folder}/hooks`,
+      `${folder}/${hooks}`,
       manifest,
       input.includeTests,
     );
@@ -48,22 +80,26 @@ export const featureGenerator: Generator = {
       ...hookResult.operations,
       {
         kind: "create",
-        path: `${folder}/services/${camel}Api.ts`,
-        content: featureServiceSource({ pascal, kebab }),
+        path: `${folder}/${services}/${camel}Api.ts`,
+        content: featureServiceSource({
+          pascal,
+          kebab,
+          typesFrom: relative(services, typesModule),
+        }),
       },
       {
         kind: "create",
-        path: `${folder}/types.ts`,
+        path: `${folder}/${typesFile}`,
         content: featureTypesSource({ pascal, kebab }),
       },
       {
         kind: "create",
-        path: `${folder}/index.ts`,
+        path: `${folder}/${entry}`,
         content: code`
-          export { ${pascal} } from "./components/${pascal}/${pascal}";
-          export { ${hook} } from "./hooks/${hook}";
-          export { fetch${pascal} } from "./services/${camel}Api";
-          export type { ${pascal}Data } from "./types";
+          export { ${pascal} } from "./${components}/${pascal}/${pascal}";
+          export { ${hook} } from "./${hooks}/${hook}";
+          export { fetch${pascal} } from "./${services}/${camel}Api";
+          export type { ${pascal}Data } from "./${typesModule}";
         `,
       },
     ];

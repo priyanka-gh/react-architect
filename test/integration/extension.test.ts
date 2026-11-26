@@ -14,6 +14,11 @@ const COMMANDS = [
   "reactArchitect.generateHook",
   "reactArchitect.generateFeature",
   "reactArchitect.setUpProject",
+  "reactArchitect.generatePage",
+  "reactArchitect.renameFeature",
+  "reactArchitect.moveToShared",
+  "reactArchitect.chooseStructure",
+  "reactArchitect.importStructure",
 ];
 
 suite("Extension", () => {
@@ -29,12 +34,16 @@ suite("Extension", () => {
 
   test("registers every command", async () => {
     const registered = await vscode.commands.getCommands(true);
-    for (const command of [...COMMANDS, "reactArchitect.createProject"]) {
+    for (const command of [
+      ...COMMANDS,
+      "reactArchitect.createProject",
+      "reactArchitect.refreshProjectMap",
+    ]) {
       assert.ok(registered.includes(command), `${command} is not registered`);
     }
   });
 
-  test("puts the generate commands in the Explorer's folder menu", () => {
+  test("puts the generate and refactor commands in the Explorer's folder menu", () => {
     const extension = vscode.extensions.getExtension(EXTENSION_ID);
     const menus = extension?.packageJSON.contributes.menus as Record<
       string,

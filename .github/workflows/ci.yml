@@ -45,4 +45,13 @@ jobs:
           node-version: lts/*
           cache: npm
       - run: npm ci
+      # So the pnpm and Yarn projects run too (they're skipped when missing).
+      - run: npm install --global pnpm@12.22.0
+      - run: yarn --version || npm install --global yarn@1.22.22
       - run: npm run test:e2e
+        env:
+          # One project starts with a git commit, which needs a name and email.
+          GIT_AUTHOR_NAME: React Architect CI
+          GIT_AUTHOR_EMAIL: ci@example.invalid
+          GIT_COMMITTER_NAME: React Architect CI
+          GIT_COMMITTER_EMAIL: ci@example.invalid

@@ -20,9 +20,18 @@ const options = {
   logLevel: "info",
 };
 
+/** `react-architect check` for CI (plans/custom-structure.md, Phase 6). */
+const cliOptions = {
+  ...options,
+  entryPoints: ["src/cli/index.ts"],
+  outfile: "dist/cli.js",
+  external: [],
+  banner: { js: "#!/usr/bin/env node" },
+};
+
 if (watch) {
   const context = await esbuild.context(options);
   await context.watch();
 } else {
-  await esbuild.build(options);
+  await Promise.all([esbuild.build(options), esbuild.build(cliOptions)]);
 }

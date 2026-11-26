@@ -76,6 +76,21 @@ export async function generateArtifact(
 
   // 2. Where in the project?
   let directory = generator.defaultDirectory(manifest);
+  const choices = generator.directoryChoices?.(manifest) ?? [];
+  if (
+    clickedFolder === undefined &&
+    choices.length > 1 &&
+    prompts.pickDirectory
+  ) {
+    const picked = await prompts.pickDirectory(
+      `Generate ${generator.label}: where?`,
+      choices,
+    );
+    if (picked === undefined) {
+      return cancelled;
+    }
+    directory = picked;
+  }
   if (clickedFolder !== undefined) {
     const relative = normalizeRelativePath(
       path.relative(root, clickedFolder.fsPath).split(path.sep).join("/") ||

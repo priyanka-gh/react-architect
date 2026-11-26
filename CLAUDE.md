@@ -5,6 +5,7 @@ A VS Code extension (portfolio project) that scaffolds React + Vite projects and
 ## Before changing anything
 
 - Design decisions are in `docs/adr/`. Follow them; if a change contradicts one, update the ADR in the same change and say so.
+- Plans for work not yet built are in `docs/plans/`. Follow the plan's phases, and when a phase's decisions are final, record them as an ADR.
 - The roadmap and current phase are in `README.md`.
 
 ## Structure rules
@@ -26,6 +27,10 @@ Also run `npm run test:e2e` (needs network, about a minute) after changing anyth
 - `@types/vscode` stays pinned exactly to the `engines.vscode` floor (1.100.0).
 - TypeScript is 6.0.x because typescript-eslint doesn't support 7 yet.
 - Look up versions with `npm view`; don't pin from memory.
+
+## The CLI
+
+`npm run build` also bundles `src/cli/index.ts` into `dist/cli.js` (`react-architect check`). It must only use `core/` and Node, never `vscode`. Try it with `node dist/cli.js check <project folder>`.
 
 ## Working with the owner
 

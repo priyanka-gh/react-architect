@@ -1,5 +1,8 @@
 import * as vscode from "vscode";
 import type { ConflictChoice } from "../core/conflicts";
+import type { Manifest, Styling } from "../core/manifest/schema";
+import type { ProjectToggles } from "../core/project/options";
+import type { PackageManagerId } from "../core/project/packageManager";
 
 /**
  * Every question the generate commands ask. Commands depend on this interface
@@ -30,9 +33,19 @@ export interface Prompts {
   confirmPlan(title: string, lines: string[]): Promise<boolean>;
   showError(message: string): void;
   showWarning(message: string): void;
+  /** Where to generate, when the structure has more than one suitable folder. */
+  pickDirectory?(title: string, folders: string[]): Promise<string | undefined>;
 }
 
 export const vscodePrompts: Prompts = {
+  async pickDirectory(title, folders) {
+    return vscode.window.showQuickPick(folders, {
+      title,
+      placeHolder: "Your project structure has more than one place for this",
+      ignoreFocusOut: true,
+    });
+  },
+
   async pickWorkspaceFolder() {
     return vscode.window.showWorkspaceFolderPick({
       placeHolder: "Which folder should React Architect work in?",
@@ -117,10 +130,18 @@ export interface ProjectPrompts {
   askProjectName(
     validate: (value: string) => Promise<string | undefined>,
   ): Promise<string | undefined>;
-  askYesNo(
-    question: string,
-    defaultAnswer: boolean,
-  ): Promise<boolean | undefined>;
+  askStyling(): Promise<Styling | undefined>;
+  /** One checklist for the yes/no choices, starting from `defaults`. */
+  askToggles(defaults: ProjectToggles): Promise<ProjectToggles | undefined>;
+  /** Only asked when more than one package manager is installed. */
+  askPackageManager(
+    available: PackageManagerId[],
+  ): Promise<PackageManagerId | undefined>;
+  /** Standard folders, or custom ones checked with `validate`. */
+  askFolders(
+    defaults: Manifest["paths"],
+    validate: (value: string, otherFolders: string[]) => string | undefined,
+  ): Promise<Manifest["paths"] | undefined>;
   /** "open" reuses this window; "newWindow" opens another. */
   projectCreated(name: string): Promise<"open" | "newWindow" | undefined>;
   installFailed(name: string): Promise<"retry" | "open" | "output" | undefined>;
@@ -152,8 +173,152 @@ export const vscodeProjectPrompts: ProjectPrompts = {
     });
   },
 
-  askYesNo: (question, defaultAnswer) =>
-    vscodePrompts.askYesNo(question, defaultAnswer),
+  async askStyling() {
+    const choices: (vscode.QuickPickItem & { styling: Styling })[] = [
+      {
+        label: "CSS Modules",
+        description: "Recommended",
+        detail:
+          "A .module.css file next to each component; its styles can't leak into others.",
+        styling: "css-modules",
+      },
+      {
+        label: "Tailwind CSS",
+        detail:
+          "Utility classes in your markup, set up and ready; no CSS file per component.",
+        styling: "tailwind",
+      },
+      {
+        label: "Plain CSS",
+        detail:
+          "A .css file next to each component, with ordinary class names.",
+        styling: "plain-css",
+      },
+      {
+        label: "No CSS files",
+        detail: "No stylesheets at all; add your own styling later.",
+        styling: "none",
+      },
+    ];
+    const picked = await vscode.window.showQuickPick(choices, {
+      title: "Create React Project: styling",
+      placeHolder: "How should components be styled?",
+      ignoreFocusOut: true,
+    });
+    return picked?.styling;
+  },
+
+  async askToggles(defaults) {
+    type ToggleItem = vscode.QuickPickItem & { key: keyof ProjectToggles };
+    const items: Omit<ToggleItem, "picked">[] = [
+      {
+        label: "Routing",
+        detail: "Pages and links with React Router",
+        key: "routing",
+      },
+      {
+        label: "Tests",
+        detail: "Vitest and React Testing Library, with starter tests",
+        key: "tests",
+      },
+      {
+        label: "@/ imports",
+        detail:
+          'import { Home } from "@/features/home" instead of "../../features/home"',
+        key: "pathAlias",
+      },
+      {
+        label: "Git repository",
+        detail: "Start with git and a first commit",
+        key: "git",
+      },
+      {
+        label: "Install packages",
+        detail: "Run the install now (takes a minute)",
+        key: "install",
+      },
+    ];
+    const choices: ToggleItem[] = items.map((item) => ({
+      ...item,
+      picked: defaults[item.key],
+    }));
+    const picked = await vscode.window.showQuickPick(choices, {
+      title: "Create React Project: options",
+      placeHolder: "Untick anything you don't want, then press Enter",
+      canPickMany: true,
+      ignoreFocusOut: true,
+    });
+    if (picked === undefined) {
+      return undefined;
+    }
+    const chosen = new Set(picked.map((choice) => choice.key));
+    return {
+      routing: chosen.has("routing"),
+      tests: chosen.has("tests"),
+      pathAlias: chosen.has("pathAlias"),
+      git: chosen.has("git"),
+      install: chosen.has("install"),
+    };
+  },
+
+  async askPackageManager(available) {
+    const picked = await vscode.window.showQuickPick(
+      available.map((id) => ({ label: id, id })),
+      {
+        title: "Create React Project: package manager",
+        placeHolder: "Which package manager should install and run scripts?",
+        ignoreFocusOut: true,
+      },
+    );
+    return picked?.id;
+  },
+
+  async askFolders(defaults, validate) {
+    const standard = {
+      label: "Standard folders",
+      detail: `${defaults.components}, ${defaults.hooks}, ${defaults.features}`,
+    };
+    const custom = {
+      label: "Choose folder names",
+      detail: "For example src/ui for components",
+    };
+    const choice = await vscode.window.showQuickPick([standard, custom], {
+      title: "Create React Project: folders",
+      placeHolder: "Where should components, hooks and features go?",
+      ignoreFocusOut: true,
+    });
+    if (choice === undefined) {
+      return undefined;
+    }
+    if (choice === standard) {
+      return defaults;
+    }
+
+    const folders = { ...defaults };
+    const labels: Record<keyof Manifest["paths"], string> = {
+      components: "Folder for shared components",
+      hooks: "Folder for shared hooks",
+      features: "Folder for features",
+    };
+    for (const key of ["components", "hooks", "features"] as const) {
+      const others = (["components", "hooks", "features"] as const)
+        .filter((other) => other !== key)
+        .map((other) => folders[other]);
+      const value = await vscode.window.showInputBox({
+        title: "Create React Project: folders",
+        prompt: labels[key],
+        value: folders[key],
+        validateInput: (input) => validate(input, others),
+        ignoreFocusOut: true,
+      });
+      if (value === undefined) {
+        return undefined;
+      }
+      // The command normalises it with the shared path rules.
+      folders[key] = value.trim();
+    }
+    return folders;
+  },
 
   async projectCreated(name) {
     const open = "Open";

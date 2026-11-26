@@ -18,6 +18,8 @@ export interface RunProcessOptions {
   signal: AbortSignal;
   /** Receives output as it arrives, e.g. for VS Code's Output panel. */
   onOutput?: (text: string) => void;
+  /** Added to the current environment. */
+  env?: Record<string, string>;
 }
 
 export function runProcess(
@@ -36,7 +38,7 @@ export function runProcess(
 
     const child = spawn(command, args, {
       cwd: options.cwd,
-      env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
+      env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0", ...options.env },
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
