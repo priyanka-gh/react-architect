@@ -1,13 +1,15 @@
 name: Release
 
-# Push a tag like v0.1.0 to publish. Needs the VSCE_PAT secret (and OVSX_PAT
-# for Open VSX); see docs/PUBLISHING.md.
+# Push a tag like v0.1.0 to publish. The Marketplace trusts this workflow
+# through a Trusted Publishing policy, so it needs no token; Open VSX needs the
+# OVSX_PAT secret. See docs/PUBLISHING.md.
 on:
   push:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: write # to create the GitHub release
+  id-token: write # to prove to the Marketplace that this workflow is publishing
 
 jobs:
   release:
@@ -47,9 +49,7 @@ jobs:
 
       - run: npm run package:vsix
       - name: Publish to the VS Code Marketplace
-        run: npx vsce publish --no-dependencies --packagePath react-architect-*.vsix
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --oidc --packagePath react-architect-*.vsix
       - name: Publish to Open VSX
         if: env.OVSX_PAT != ''
         run: npx ovsx publish react-architect-*.vsix
